@@ -26,51 +26,66 @@ const AnalyticsPage = () => {
 
     const fetchAnalytics = async () => {
         if (!currentOrganization) return;
-        
+
         try {
-            const analytics = await organizationService.getOrganizationAnalytics(currentOrganization.id);
-            
-            // Generate chart data for the selected period
             const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90;
-            const generatedData = Array.from({ length: days }, (_, i) => {
-                const date = new Date();
-                date.setDate(date.getDate() - (days - i - 1));
-                const dayName = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                
-                return {
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - days);
+
+            const analytics = await organizationService.getOrganizationAnalytics(currentOrganization.id, startDate);
+
+            // Generate chart data for the selected period
+            const chartDataMap: Record<string, any> = {};
+
+            // Initialize map with 0s
+            for (let i = 0; i < days; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() - (days - i - 1));
+                const dateStr = d.toLocaleDateString();
+                const dayName = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                chartDataMap[dateStr] = {
                     name: dayName,
-                    conversations: Math.floor(Math.random() * 50) + 10,
-                    tokens: Math.floor(Math.random() * 5000) + 1000,
-                    responseTime: Math.random() * 2 + 0.5,
-                    engagement: Math.floor(Math.random() * 30) + 60
+                    conversations: 0,
+                    tokens: 0,
+                    responseTime: 0,
+                    engagement: 0
                 };
+            }
+
+            // Fill with real data
+            analytics.botStats.forEach((bot: any) => {
+                bot.dailyStats.forEach((day: any) => {
+                    if (chartDataMap[day.date]) {
+                        chartDataMap[day.date].conversations += day.conversations;
+                        chartDataMap[day.date].tokens += day.tokens;
+                    }
+                });
             });
 
+            const generatedData = Object.values(chartDataMap);
             setChartData(generatedData);
 
             // Calculate metrics
-            const totalConv = generatedData.reduce((sum, day) => sum + day.conversations, 0);
-            const totalTok = generatedData.reduce((sum, day) => sum + day.tokens, 0);
-            const avgResponse = (generatedData.reduce((sum, day) => sum + day.responseTime, 0) / generatedData.length).toFixed(1);
-            const avgEngagement = Math.floor(generatedData.reduce((sum, day) => sum + day.engagement, 0) / generatedData.length);
-
             setMetrics({
-                totalConversations: totalConv,
-                activeUsers: Math.floor(totalConv * 0.7),
-                avgResponseTime: `${avgResponse}s`,
-                engagementRate: `${avgEngagement}%`,
-                totalTokens: totalTok,
-                successRate: '95%'
+                totalConversations: analytics.totalConversations,
+                activeUsers: Math.floor(analytics.totalConversations * 0.8), // Estimate
+                avgResponseTime: '1.2s', // Placeholder
+                engagementRate: '68%', // Placeholder
+                totalTokens: analytics.totalTokens,
+                successRate: '95%' // Placeholder
             });
 
             // Bot performance data
-            const botStats = bots.map(bot => ({
-                name: bot.name,
-                conversations: Math.floor(Math.random() * 200) + 50,
-                successRate: Math.floor(Math.random() * 10) + 90,
-                avgResponse: (Math.random() * 1 + 0.5).toFixed(1),
-                isActive: bot.is_active
-            })).sort((a, b) => b.conversations - a.conversations);
+            const botStats = analytics.botStats.map((bot: any) => {
+                const originalBot = bots.find(b => b.id === bot.botId);
+                return {
+                    name: bot.botName,
+                    conversations: bot.totalConversations,
+                    successRate: Math.floor(Math.random() * 10) + 90, // Placeholder
+                    avgResponse: (Math.random() * 1 + 0.5).toFixed(1), // Placeholder
+                    isActive: originalBot?.is_active ?? true
+                };
+            }).sort((a: any, b: any) => b.conversations - a.conversations);
 
             setBotPerformance(botStats);
             setLoading(false);
@@ -84,7 +99,7 @@ const AnalyticsPage = () => {
             ['Date', 'Conversations', 'Tokens', 'Response Time', 'Engagement'],
             ...chartData.map(d => [d.name, d.conversations, d.tokens, d.responseTime, d.engagement])
         ].map(row => row.join(',')).join('\n');
-        
+
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -104,15 +119,15 @@ const AnalyticsPage = () => {
                     </div>
                     <div className="flex gap-3">
                         <div className="relative">
-                            <button 
+                            <button
                                 onClick={() => setShowDatePicker(!showDatePicker)}
                                 className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-xl hover:bg-white/30 transition-all text-sm font-semibold"
                             >
                                 <Calendar size={16} />
                                 <span>
-                                    {dateRange === '7d' ? 'Last 7 Days' : 
-                                     dateRange === '30d' ? 'Last 30 Days' : 
-                                     'Last 90 Days'}
+                                    {dateRange === '7d' ? 'Last 7 Days' :
+                                        dateRange === '30d' ? 'Last 30 Days' :
+                                            'Last 90 Days'}
                                 </span>
                                 <ChevronDown size={16} />
                             </button>
@@ -127,15 +142,15 @@ const AnalyticsPage = () => {
                                             }}
                                             className="w-full px-4 py-2 text-left text-sm hover:bg-emerald-50 text-slate-700"
                                         >
-                                        {range === '7d' ? 'Last 7 Days' : 
-                                         range === '30d' ? 'Last 30 Days' : 
-                                         'Last 90 Days'}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                        <button 
+                                            {range === '7d' ? 'Last 7 Days' :
+                                                range === '30d' ? 'Last 30 Days' :
+                                                    'Last 90 Days'}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <button
                             onClick={exportData}
                             className="flex items-center gap-2 px-5 py-2.5 bg-white/20 backdrop-blur-sm text-white rounded-xl hover:bg-white/30 transition-all text-sm font-semibold shadow-lg"
                         >
@@ -353,9 +368,8 @@ const AnalyticsPage = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                                                bot.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                                            }`}>
+                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${bot.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                                                }`}>
                                                 <div className={`w-1.5 h-1.5 rounded-full ${bot.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}></div>
                                                 {bot.isActive ? 'Active' : 'Inactive'}
                                             </span>

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { MessageSquare, Filter, ChevronDown, Clock, Zap, User, Bot, Calendar, Download, Search, X } from 'lucide-react';
+import { MessageSquare, Filter, ChevronDown, Clock, Zap, User, Bot, Calendar, Download, Search, X, FlaskConical } from 'lucide-react';
 import { useOrganizations } from '../context/OrganizationsContext';
 import { organizationService } from '../services/organizationService';
+import { supabaseService } from '../services/supabaseService';
 
 interface ChatSession {
     id: string;
@@ -13,6 +14,7 @@ interface ChatSession {
     tokens_used: number;
     duration: string;
     messages: ChatMessage[];
+    is_test?: boolean;
 }
 
 interface ChatMessage {
@@ -35,44 +37,54 @@ const HistoryPage = () => {
 
     useEffect(() => {
         fetchHistory();
-    }, [currentOrganization]);
+    }, [currentOrganization, bots]);
 
     useEffect(() => {
         applyFilters();
     }, [sessions, filterBot, searchQuery, dateRange]);
 
     const fetchHistory = async () => {
-        if (!currentOrganization) return;
-        
+        if (!currentOrganization || bots.length === 0) {
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
-            // Fetch all sessions for the organization's bots
             const allSessions: ChatSession[] = [];
-            
+
             for (const bot of bots) {
-                // Simulated data - in production, fetch from Supabase
-                const botSessions = Array.from({ length: Math.floor(Math.random() * 10) + 5 }, (_, i) => {
-                    const date = new Date();
-                    date.setHours(date.getHours() - Math.floor(Math.random() * 168)); // Last week
-                    const messageCount = Math.floor(Math.random() * 20) + 5;
-                    const tokensUsed = messageCount * Math.floor(Math.random() * 100 + 50);
-                    
+                const history = await supabaseService.getChatHistory(bot.id);
+
+                const botSessions = history.map((h: any) => {
+                    // Calculate duration
+                    let duration = '< 1m';
+                    if (h.messages && h.messages.length > 1) {
+                        const first = new Date(h.messages[0].timestamp).getTime();
+                        const last = new Date(h.messages[h.messages.length - 1].timestamp).getTime();
+                        const diffMs = last - first;
+                        const diffMins = Math.floor(diffMs / 60000);
+                        if (diffMins > 0) duration = `${diffMins}m`;
+                        else duration = `${Math.floor(diffMs / 1000)}s`;
+                    }
+
                     return {
-                        id: `session-${bot.id}-${i}`,
+                        id: h.id,
                         bot_id: bot.id,
                         bot_name: bot.name,
-                        user_id: Math.random() > 0.5 ? `user-${i}` : null,
-                        created_at: date.toISOString(),
-                        message_count: messageCount,
-                        tokens_used: tokensUsed,
-                        duration: `${Math.floor(Math.random() * 15) + 1}m`,
-                        messages: []
+                        user_id: h.user_id,
+                        created_at: h.created_at,
+                        message_count: h.messages.length,
+                        tokens_used: h.tokens_used,
+                        duration: duration,
+                        messages: h.messages,
+                        is_test: h.is_test
                     };
                 });
                 allSessions.push(...botSessions);
             }
-            
-            // Sort by date
+
+            // Sort by date desc
             allSessions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
             setSessions(allSessions);
         } catch (error) {
@@ -107,9 +119,10 @@ const HistoryPage = () => {
 
         // Search filter
         if (searchQuery) {
-            filtered = filtered.filter(s => 
+            filtered = filtered.filter(s =>
                 s.bot_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (s.user_id && s.user_id.toLowerCase().includes(searchQuery.toLowerCase()))
+                (s.user_id && s.user_id.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                s.id.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
 
@@ -136,7 +149,7 @@ const HistoryPage = () => {
 
     const exportToCSV = () => {
         const csv = [
-            ['Session ID', 'Bot', 'User', 'Date', 'Messages', 'Tokens', 'Duration'],
+            ['Session ID', 'Bot', 'User', 'Date', 'Messages', 'Tokens', 'Duration', 'Type'],
             ...filteredSessions.map(s => [
                 s.id,
                 s.bot_name,
@@ -144,10 +157,11 @@ const HistoryPage = () => {
                 new Date(s.created_at).toLocaleString(),
                 s.message_count,
                 s.tokens_used,
-                s.duration
+                s.duration,
+                s.is_test ? 'TEST' : 'LIVE'
             ])
         ].map(row => row.join(',')).join('\n');
-        
+
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -305,10 +319,19 @@ const HistoryPage = () => {
                                     >
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                                                    <MessageSquare className="text-emerald-600" size={18} />
+                                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${session.is_test ? 'bg-amber-100' : 'bg-emerald-100'}`}>
+                                                    {session.is_test ? (
+                                                        <FlaskConical className="text-amber-600" size={18} />
+                                                    ) : (
+                                                        <MessageSquare className="text-emerald-600" size={18} />
+                                                    )}
                                                 </div>
-                                                <span className="text-sm font-mono text-slate-600">{session.id.substring(0, 12)}...</span>
+                                                <div>
+                                                    <span className="text-sm font-mono text-slate-600 block">{session.id.substring(0, 8)}...</span>
+                                                    {session.is_test && (
+                                                        <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase tracking-wider">Test</span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
@@ -353,7 +376,12 @@ const HistoryPage = () => {
                         {/* Header */}
                         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
                             <div>
-                                <h2 className="text-xl font-bold text-slate-800">Session Transcript</h2>
+                                <div className="flex items-center gap-3">
+                                    <h2 className="text-xl font-bold text-slate-800">Session Transcript</h2>
+                                    {selectedSession.is_test && (
+                                        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded uppercase tracking-wider">Test Session</span>
+                                    )}
+                                </div>
                                 <div className="flex items-center gap-4 mt-2 text-sm text-slate-600">
                                     <span className="flex items-center gap-1.5">
                                         <Bot size={14} />
@@ -387,32 +415,20 @@ const HistoryPage = () => {
                                 <div className="text-center text-sm text-slate-500 mb-6">
                                     Session started on {new Date(selectedSession.created_at).toLocaleString()}
                                 </div>
-                                
-                                {/* Placeholder messages */}
-                                {Array.from({ length: selectedSession.message_count }, (_, i) => {
-                                    const isUser = i % 2 === 0;
+
+                                {selectedSession.messages.map((msg, i) => {
+                                    const isUser = msg.role === 'user';
                                     return (
-                                        <div key={i} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                                        <div key={msg.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                                             <div className={`max-w-[75%] ${isUser ? 'order-2' : 'order-1'}`}>
-                                                <div className={`px-4 py-3 rounded-2xl ${
-                                                    isUser
+                                                <div className={`px-4 py-3 rounded-2xl ${isUser
                                                         ? 'bg-emerald-600 text-white rounded-tr-none'
                                                         : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'
-                                                }`}>
-                                                    <p className="text-sm">
-                                                        {isUser
-                                                            ? `User message ${Math.floor(i / 2) + 1}`
-                                                            : `Bot response ${Math.floor(i / 2) + 1}`}
-                                                    </p>
+                                                    }`}>
+                                                    <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                                                 </div>
                                                 <div className={`flex items-center gap-2 mt-1 text-xs text-slate-500 ${isUser ? 'justify-end' : 'justify-start'}`}>
-                                                    <span>{new Date(selectedSession.created_at).toLocaleTimeString()}</span>
-                                                    {!isUser && (
-                                                        <span className="flex items-center gap-1">
-                                                            <Zap size={10} className="text-amber-500" />
-                                                            {Math.floor(selectedSession.tokens_used / (selectedSession.message_count / 2))} tokens
-                                                        </span>
-                                                    )}
+                                                    <span>{new Date(msg.timestamp).toLocaleTimeString()}</span>
                                                 </div>
                                             </div>
                                         </div>

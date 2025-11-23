@@ -175,11 +175,10 @@ const AgentBuilderNew: React.FC<AgentBuilderNewProps> = (props) => {
                     {bots.map((bot) => (
                         <div
                             key={bot.id}
-                            className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
-                                currentBot?.id === bot.id
-                                    ? 'border-emerald-500 bg-emerald-50'
-                                    : 'border-slate-200 bg-white hover:border-slate-300'
-                            }`}
+                            className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${currentBot?.id === bot.id
+                                ? 'border-emerald-500 bg-emerald-50'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                                }`}
                             onClick={() => setCurrentBot(bot)}
                         >
                             {/* Bot Header */}
@@ -226,11 +225,10 @@ const AgentBuilderNew: React.FC<AgentBuilderNewProps> = (props) => {
                                         e.stopPropagation();
                                         handleToggleStatus(bot.id, bot.is_active);
                                     }}
-                                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                                        bot.is_active
-                                            ? 'bg-amber-100 hover:bg-amber-200 text-amber-700'
-                                            : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
-                                    }`}
+                                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 ${bot.is_active
+                                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-700'
+                                        : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
+                                        }`}
                                     title={bot.is_active ? 'Deactivate' : 'Activate'}
                                 >
                                     {bot.is_active ? <PowerOff size={14} /> : <Power size={14} />}

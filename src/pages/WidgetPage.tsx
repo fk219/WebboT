@@ -29,7 +29,7 @@ const WidgetPage: React.FC = () => {
       // In a real app, this would be a public API endpoint
       // For now, we'll fetch from Supabase directly
       const { data, error } = await supabase
-        .from('projects')
+        .from('bots')
         .select('config')
         .eq('id', projectId)
         .single();
@@ -91,8 +91,8 @@ const WidgetPage: React.FC = () => {
 
   return (
     <div className="h-screen w-screen bg-transparent">
-      <ChatWidget 
-        config={config} 
+      <ChatWidget
+        config={config}
         projectId={projectId}
         previewMode={false}
       />

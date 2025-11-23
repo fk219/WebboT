@@ -6,7 +6,7 @@ import { supabaseService } from "../src/services/supabaseService";
 // Initialize GenAI Client is moved inside functions to ensure API key availability.
 
 const MODEL_NAME = 'gemini-2.5-flash';
-const LIVE_MODEL_NAME = 'gemini-2.5-flash-native-audio-preview-09-2025';
+const LIVE_MODEL_NAME = 'gemini-2.0-flash-exp';
 const TTS_MODEL_NAME = 'gemini-2.5-flash-preview-tts';
 
 const getApiKey = () => {
@@ -40,7 +40,9 @@ export const chatWithAgent = async (
   history: Message[],
   userMessage: string,
   userId?: string,
-  projectId?: string
+  projectId?: string,
+  isTest: boolean = false,
+  sessionId?: string
 ): Promise<Message> => {
 
   if (userId && projectId) {
@@ -90,7 +92,7 @@ export const chatWithAgent = async (
 
     if (userId && projectId) {
       const totalTokens = result.usageMetadata?.totalTokenCount || 100; // Fallback to 100 if undefined
-      await supabaseService.recordUsage(userId, projectId, totalTokens);
+      await supabaseService.recordUsage(userId, projectId, totalTokens, isTest, sessionId);
     }
 
     const citations = agent.knowledgeContext && agent.knowledgeContext.length > 0
@@ -119,7 +121,13 @@ export const chatWithAgent = async (
 /**
  * Generates a voice preview using Gemini TTS
  */
-export const previewVoice = async (config: AgentConfig): Promise<AudioBuffer | null> => {
+export const previewVoice = async (
+  config: AgentConfig,
+  userId?: string,
+  projectId?: string,
+  isTest: boolean = false,
+  sessionId?: string
+): Promise<AudioBuffer | null> => {
   try {
     const apiKey = getApiKey();
     if (!apiKey) {
@@ -153,6 +161,12 @@ export const previewVoice = async (config: AgentConfig): Promise<AudioBuffer | n
 
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
     const audioBuffer = await ctx.decodeAudioData(bytes.buffer);
+
+    // Record Usage for Voice Preview (Estimate ~50 tokens)
+    if (userId && projectId) {
+      await supabaseService.recordUsage(userId, projectId, 50, isTest, sessionId);
+    }
+
     return audioBuffer;
   } catch (e) {
     console.error("Voice Preview Error", e);
@@ -180,19 +194,33 @@ export class LiveSession {
   private currentInputTranscription = '';
   private currentOutputTranscription = '';
 
+  private userId?: string;
+  private projectId?: string;
+  private isTest: boolean;
+  private sessionId?: string;
+  private startTime: number = 0;
+
   constructor(
     config: AgentConfig,
     onDisconnect: (error?: string) => void,
-    onTranscript: (role: 'user' | 'model', text: string) => void
+    onTranscript: (role: 'user' | 'model', text: string) => void,
+    userId?: string,
+    projectId?: string,
+    isTest: boolean = false,
+    sessionId?: string
   ) {
     this.config = config;
     this.onDisconnect = onDisconnect;
     this.onTranscript = onTranscript;
+    this.userId = userId;
+    this.projectId = projectId;
+    this.isTest = isTest;
+    this.sessionId = sessionId;
   }
 
   async connect() {
     console.log("🎙️ VerdantAI: Starting voice connection...");
-    
+
     // 1. Request Microphone Permission IMMEDIATELY (User Gesture Context)
     try {
       console.log("🎙️ Requesting microphone access...");
@@ -240,7 +268,7 @@ export class LiveSession {
       const sessionPromise = ai.live.connect({
         model: LIVE_MODEL_NAME,
         config: {
-          responseModalities: [Modality.AUDIO],
+          responseModalities: [Modality.AUDIO, Modality.TEXT], // Request TEXT as well for stability
           // Request transcription for both input (user) and output (model)
           inputAudioTranscription: {},
           outputAudioTranscription: {},
@@ -251,7 +279,8 @@ export class LiveSession {
         },
         callbacks: {
           onopen: async () => {
-            console.log("✅ VerdantAI: Voice Session Opened");
+            console.log("✅ Webbot: Voice Session Opened");
+            this.startTime = Date.now();
             await this.startInputStreaming(sessionPromise);
           },
           onmessage: async (message: LiveServerMessage) => {
@@ -260,13 +289,21 @@ export class LiveSession {
             this.handleServerMessage(message);
           },
           onclose: () => {
-            console.log("🔌 VerdantAI: Voice Session Closed");
+            console.log("🔌 Webbot: Voice Session Closed");
             this.flushTranscripts(); // Ensure any remaining text is saved
+
+            // Record Usage (Time-based estimation: ~100 tokens per minute for audio)
+            if (this.userId && this.projectId && this.startTime > 0) {
+              const durationSeconds = (Date.now() - this.startTime) / 1000;
+              const estimatedTokens = Math.ceil(durationSeconds * 2); // Approx 2 tokens per second
+              supabaseService.recordUsage(this.userId, this.projectId, estimatedTokens, this.isTest, this.sessionId);
+            }
+
             this.cleanup();
             this.onDisconnect();
           },
           onerror: (err) => {
-            console.error("❌ VerdantAI: Voice Session Error", err);
+            console.error("❌ Webbot: Voice Session Error", err);
             this.cleanup();
             this.onDisconnect("Connection error occurred. Please check your internet connection and try again.");
           }
@@ -276,7 +313,7 @@ export class LiveSession {
       this.session = sessionPromise;
       console.log("✅ Voice session connection initiated");
     } catch (err: any) {
-      console.error("❌ VerdantAI: Connection Failed", err);
+      console.error("❌ Webbot: Connection Failed", err);
       console.error("Error details:", {
         message: err.message,
         stack: err.stack,
@@ -300,12 +337,18 @@ export class LiveSession {
         const base64 = this.arrayBufferToBase64(pcmData);
 
         sessionPromise.then((session) => {
-          session.sendRealtimeInput({
-            media: {
-              mimeType: 'audio/pcm;rate=16000',
-              data: base64
-            }
-          });
+          try {
+            session.sendRealtimeInput({
+              media: {
+                mimeType: 'audio/pcm;rate=16000',
+                data: base64
+              }
+            });
+          } catch (sendErr) {
+            console.error("⚠️ Error sending audio frame:", sendErr);
+          }
+        }).catch(err => {
+          console.error("⚠️ Session promise error in audio process:", err);
         });
       };
 

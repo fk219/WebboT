@@ -98,7 +98,7 @@ const AgentBuilder: React.FC<AgentBuilderProps> = ({
             // Use currentProjectId if available, otherwise check config.id
             const projectId = currentProjectId || agentConfig.id;
             const isExistingProject = projectId && projectId.includes('-');
-            
+
             if (isExistingProject) {
                 // Update existing project
                 await supabaseService.updateProject(projectId, agentConfig, agentConfig.name);
@@ -1045,7 +1045,12 @@ const AgentBuilder: React.FC<AgentBuilderProps> = ({
 
                     <div className="flex-1 flex items-end justify-end p-6">
                         <div className="transform scale-90 origin-bottom-right">
-                            <ChatWidget config={agentConfig} previewMode={true} />
+                            <ChatWidget
+                                config={agentConfig}
+                                previewMode={true}
+                                userId={user?.id}
+                                projectId={currentProjectId || agentConfig.id}
+                            />
                         </div>
                     </div>
                 </div>

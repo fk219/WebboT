@@ -62,14 +62,14 @@ const ProjectsPage: React.FC = () => {
 
     const result = await deleteProjectContext(projectId);
     if (!result.success) {
-      setToast({ 
-        message: result.error || 'Failed to delete project', 
-        type: 'error' 
+      setToast({
+        message: result.error || 'Failed to delete project',
+        type: 'error'
       });
     } else {
-      setToast({ 
-        message: 'Project deleted successfully', 
-        type: 'success' 
+      setToast({
+        message: 'Project deleted successfully',
+        type: 'success'
       });
     }
   };
@@ -81,7 +81,7 @@ const ProjectsPage: React.FC = () => {
   };
 
   const getEmbedCode = (projectId: string) => {
-    return `<script src="http://localhost:3000/widget-embed.js" data-agent-id="${projectId}"></script>`;
+    return `<script src="${window.location.origin}/widget-embed.js" data-agent-id="${projectId}"></script>`;
   };
 
   if (loading) {
@@ -167,7 +167,7 @@ const ProjectsPage: React.FC = () => {
                 <Edit2 size={16} />
                 Edit Agent
               </button>
-              
+
               <button
                 onClick={() => copyToClipboard(getEmbedCode(project.id), project.id)}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-700 hover:border-emerald-500 hover:text-emerald-600 transition-all text-sm font-medium"

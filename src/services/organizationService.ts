@@ -6,7 +6,7 @@ export const organizationService = {
   // ============================================
   // ORGANIZATIONS
   // ============================================
-  
+
   async getOrganizations(userId: string): Promise<Organization[]> {
     const { data, error } = await supabase
       .from('organizations')
@@ -275,45 +275,51 @@ export const organizationService = {
   // ANALYTICS
   // ============================================
 
-  async getBotAnalytics(botId: string): Promise<any> {
-    // Get total conversations
-    const { count: totalConversations } = await supabase
-      .from('chat_sessions')
-      .select('*', { count: 'exact', head: true })
-      .eq('bot_id', botId);
+  async getBotAnalytics(botId: string, startDate?: Date): Promise<any> {
+    const query = supabase.from('chat_sessions').select('*', { count: 'exact', head: true }).eq('bot_id', botId);
+    if (startDate) {
+      query.gte('created_at', startDate.toISOString());
+    }
+    const { count: totalConversations } = await query;
 
-    // Get total tokens
-    const { data: usageLogs } = await supabase
-      .from('usage_logs')
-      .select('tokens_used')
-      .eq('bot_id', botId);
+    const usageQuery = supabase.from('usage_logs').select('tokens_used, created_at').eq('bot_id', botId);
+    if (startDate) {
+      usageQuery.gte('created_at', startDate.toISOString());
+    }
+    const { data: usageLogs } = await usageQuery;
 
     const totalTokens = usageLogs?.reduce((sum, log) => sum + log.tokens_used, 0) || 0;
 
-    // Get daily stats (last 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    // Aggregate by day
+    const dailyStats: Record<string, { tokens: number, conversations: number }> = {};
 
-    const { data: recentUsage } = await supabase
-      .from('usage_logs')
-      .select('created_at, tokens_used')
-      .eq('bot_id', botId)
-      .gte('created_at', sevenDaysAgo.toISOString());
-
-    const dailyStats: Record<string, number> = {};
-    recentUsage?.forEach(log => {
+    // Initialize daily stats from usage logs
+    usageLogs?.forEach(log => {
       const date = new Date(log.created_at).toLocaleDateString();
-      dailyStats[date] = (dailyStats[date] || 0) + log.tokens_used;
+      if (!dailyStats[date]) dailyStats[date] = { tokens: 0, conversations: 0 };
+      dailyStats[date].tokens += log.tokens_used;
+    });
+
+    // Get sessions for daily conversation count
+    const { data: sessions } = await query; // query was defined above
+    sessions?.forEach((session: any) => {
+      const date = new Date(session.created_at).toLocaleDateString();
+      if (!dailyStats[date]) dailyStats[date] = { tokens: 0, conversations: 0 };
+      dailyStats[date].conversations += 1;
     });
 
     return {
       totalConversations: totalConversations || 0,
       totalTokens,
-      dailyStats: Object.entries(dailyStats).map(([date, tokens]) => ({ date, tokens }))
+      dailyStats: Object.entries(dailyStats).map(([date, stats]) => ({
+        date,
+        tokens: stats.tokens,
+        conversations: stats.conversations
+      }))
     };
   },
 
-  async getOrganizationAnalytics(organizationId: string): Promise<any> {
+  async getOrganizationAnalytics(organizationId: string, startDate?: Date): Promise<any> {
     // Get all bots in organization
     const bots = await this.getBots(organizationId);
     const botIds = bots.map(b => b.id);
@@ -323,23 +329,25 @@ export const organizationService = {
     }
 
     // Get total conversations across all bots
-    const { count: totalConversations } = await supabase
-      .from('chat_sessions')
-      .select('*', { count: 'exact', head: true })
-      .in('bot_id', botIds);
+    const sessionQuery = supabase.from('chat_sessions').select('*', { count: 'exact', head: true }).in('bot_id', botIds);
+    if (startDate) {
+      sessionQuery.gte('created_at', startDate.toISOString());
+    }
+    const { count: totalConversations } = await sessionQuery;
 
     // Get total tokens across all bots
-    const { data: usageLogs } = await supabase
-      .from('usage_logs')
-      .select('tokens_used, bot_id')
-      .in('bot_id', botIds);
+    const usageQuery = supabase.from('usage_logs').select('tokens_used, bot_id').in('bot_id', botIds);
+    if (startDate) {
+      usageQuery.gte('created_at', startDate.toISOString());
+    }
+    const { data: usageLogs } = await usageQuery;
 
     const totalTokens = usageLogs?.reduce((sum, log) => sum + log.tokens_used, 0) || 0;
 
     // Get stats per bot
     const botStats = await Promise.all(
       bots.map(async (bot) => {
-        const analytics = await this.getBotAnalytics(bot.id);
+        const analytics = await this.getBotAnalytics(bot.id, startDate);
         return {
           botId: bot.id,
           botName: bot.name,

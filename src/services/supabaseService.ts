@@ -189,10 +189,16 @@ export const supabaseService = {
         return data?.reduce((sum, record) => sum + record.tokens_used, 0) || 0;
     },
 
-    async recordUsage(userId: string, projectId: string, tokens: number): Promise<void> {
+    async recordUsage(userId: string, projectId: string, tokens: number, isTest: boolean = false, sessionId?: string): Promise<void> {
         const { error } = await supabase
             .from('usage_logs')
-            .insert([{ user_id: userId, project_id: projectId, tokens_used: tokens }]);
+            .insert([{
+                user_id: userId,
+                project_id: projectId,
+                tokens_used: tokens,
+                is_test: isTest,
+                session_id: sessionId
+            }]);
 
         if (error) {
             console.error('Error recording usage:', error);
@@ -200,10 +206,14 @@ export const supabaseService = {
     },
 
     // Chat History & Analytics
-    async createSession(projectId: string, userId?: string): Promise<string | null> {
+    async createSession(projectId: string, userId?: string, isTest: boolean = false): Promise<string | null> {
         const { data, error } = await supabase
             .from('chat_sessions')
-            .insert([{ project_id: projectId, user_id: userId }])
+            .insert([{
+                project_id: projectId,
+                user_id: userId,
+                is_test: isTest
+            }])
             .select('id')
             .single();
 
@@ -231,8 +241,13 @@ export const supabaseService = {
             .select(`
                 id, 
                 created_at, 
+                user_id,
+                is_test,
                 chat_messages (
                     id, role, text, timestamp
+                ),
+                usage_logs (
+                    tokens_used
                 )
             `)
             .eq('project_id', projectId)
@@ -247,7 +262,8 @@ export const supabaseService = {
             ...session,
             messages: session.chat_messages.sort((a: any, b: any) =>
                 new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-            )
+            ),
+            tokens_used: session.usage_logs?.reduce((sum: number, log: any) => sum + log.tokens_used, 0) || 0
         }));
     },
 

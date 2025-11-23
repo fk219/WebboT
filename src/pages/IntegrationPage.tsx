@@ -10,7 +10,7 @@ interface IntegrationPageProps {
 const IntegrationPage: React.FC<IntegrationPageProps> = ({ agentConfig, currentProjectId }) => {
     const [copySuccess, setCopySuccess] = useState<string | null>(null);
     const projectId = currentProjectId || agentConfig.id;
-    const widgetHost = 'http://localhost:3000'; // Change this for production
+    const widgetHost = window.location.origin;
 
     const handleCopy = (text: string, type: string) => {
         navigator.clipboard.writeText(text);
@@ -57,8 +57,8 @@ const IntegrationPage: React.FC<IntegrationPageProps> = ({ agentConfig, currentP
                     </div>
                     <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
                         <p className="text-sm text-blue-800">
-                            <strong>For localhost testing:</strong> This embed code will work on any website running on your local machine. 
-                            The widget will load from <code className="bg-blue-100 px-1 rounded">http://localhost:3000</code>
+                            <strong>For testing:</strong> This embed code will work on any website.
+                            The widget will load from <code className="bg-blue-100 px-1 rounded">{widgetHost}</code>
                         </p>
                     </div>
                 </div>

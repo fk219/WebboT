@@ -52,7 +52,7 @@ export default function AuthPage() {
                         <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/20 mb-6">
                             <Bot className="text-white" size={32} />
                         </div>
-                        <h1 className="text-2xl font-medium text-slate-900 mb-2 tracking-tight">Welcome to Verdant<span className="text-emerald-500">AI</span></h1>
+                        <h1 className="text-2xl font-medium text-slate-900 mb-2 tracking-tight">Welcome to Web<span className="text-emerald-500">bot</span></h1>
                         <p className="text-slate-500 text-sm">
                             Create intelligent, nature-inspired AI agents.
                         </p>

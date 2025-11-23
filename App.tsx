@@ -48,10 +48,10 @@ import Sidebar from './src/components/Sidebar';
 
 const INITIAL_AGENT: AgentConfig = {
   id: 'agent_01',
-  name: 'Verdant Assistant',
-  greeting: 'Hello! I am your Verdant AI assistant. How can I help you today?',
+  name: 'Webbot Assistant',
+  greeting: 'Hello! I am your Webbot AI assistant. How can I help you today?',
   systemInstruction: 'You are a helpful, professional, and concise AI assistant for a SaaS platform. Be polite and use an emerald/nature metaphor occasionally.',
-  knowledgeContext: 'VerdantAI is a premium SaaS platform that allows businesses to embed Gemini-powered AI agents into their websites.',
+  knowledgeContext: 'Webbot is a premium SaaS platform that allows businesses to embed Gemini-powered AI agents into their websites.',
   tools: ['googleSearch'],
   maxReplyTokens: 150,
   quickReplies: ['Pricing?', 'How does it work?', 'Contact Support'],
@@ -100,18 +100,18 @@ const AppLayout = () => {
   const [newQuickReply, setNewQuickReply] = useState('');
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [historyFilter, setHistoryFilter] = useState<string>('all');
-  const [hasApiKey, setHasApiKey] = useState(false);
+
   const { user, profile, signOut } = useAuth();
-  const { 
-    organizations, 
-    currentOrganization, 
-    setCurrentOrganization, 
-    bots, 
+  const {
+    organizations,
+    currentOrganization,
+    setCurrentOrganization,
+    bots,
     currentBot,
     loading: organizationsLoading,
     createOrganization,
     updateOrganization,
-    deleteOrganization 
+    deleteOrganization
   } = useOrganizations();
   const isPro = profile?.subscription_tier === 'pro';
   const [isDeleting, setIsDeleting] = useState(false);
@@ -126,7 +126,7 @@ const AppLayout = () => {
     message: string;
     onConfirm: () => void;
     type?: 'danger' | 'warning' | 'info';
-  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => { } });
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const { addNotification, unreadCount } = useNotifications();
 
@@ -146,9 +146,7 @@ const AppLayout = () => {
     }
   }, [currentBot]);
 
-  const handleSelectApiKey = () => {
-    setHasApiKey(true);
-  };
+
 
   const handleSwitchOrganization = (org: any) => {
     setCurrentOrganization(org);
@@ -175,12 +173,12 @@ const AppLayout = () => {
   const handleDeleteOrganization = async (org: any, e: React.MouseEvent) => {
     e.stopPropagation();
     setShowOrgDropdown(false);
-    
+
     // Check if this is the last organization
     if (organizations.length <= 1) {
-      setToast({ 
-        message: 'You must have at least one organization', 
-        type: 'error' 
+      setToast({
+        message: 'You must have at least one organization',
+        type: 'error'
       });
       addNotification('error', 'Cannot Delete', 'You must have at least one organization');
       return;
@@ -194,10 +192,10 @@ const AppLayout = () => {
       onConfirm: async () => {
         setIsDeleting(true);
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
-        
+
         try {
           const result = await deleteOrganization(org.id);
-          
+
           if (result.success) {
             setToast({ message: `Organization "${org.name}" deleted successfully`, type: 'success' });
             addNotification('success', 'Organization Deleted', `"${org.name}" has been deleted`);
@@ -249,7 +247,7 @@ const AppLayout = () => {
         setIsIngesting(false);
         setAgentConfig(prev => ({
           ...prev,
-          knowledgeContext: (prev.knowledgeContext || '') + `\n\n--- Scraped Content from ${urlInput} ---\nVerdantAI is a leading provider of AI solutions...`
+          knowledgeContext: (prev.knowledgeContext || '') + `\n\n--- Scraped Content from ${urlInput} ---\nWebbot is a leading provider of AI solutions...`
         }));
         setUrlInput('');
       }
@@ -348,32 +346,7 @@ const AppLayout = () => {
     </button>
   );
 
-  if (!hasApiKey) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-[#f8fafc]">
-        <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-100 max-w-md w-full text-center space-y-6">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
-            <Bot size={32} />
-          </div>
-          <h1 className="text-xl font-medium text-slate-800">Setup Required</h1>
-          <p className="text-slate-500 text-sm">Please select a Google Cloud API Key to continue using VerdantAI.</p>
 
-          <button
-            onClick={handleSelectApiKey}
-            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-medium transition-all shadow-lg shadow-emerald-200 active:scale-95"
-          >
-            Select API Key
-          </button>
-
-          <div className="pt-2">
-            <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="text-xs text-slate-400 underline hover:text-emerald-600">
-              Billing Information
-            </a>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -419,7 +392,7 @@ const AppLayout = () => {
                   <p className="text-xs text-slate-400 font-mono">Org ID: {currentProject.id}</p>
                 </div>
               </div>
-              
+
               {/* Notification Bell */}
               <button
                 onClick={() => setShowNotifications(true)}
@@ -434,41 +407,44 @@ const AppLayout = () => {
               </button>
             </div>
           </div>
-        )}
-        
+        )
+        }
+
         {/* Account-Wide Header for Settings and Billing */}
-        {(currentView === AppView.SETTINGS || currentView === AppView.BILLING) && (
-          <div className="bg-white border-b border-slate-200 px-6 py-4 flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
-                  {currentView === AppView.SETTINGS ? <Settings size={20} /> : <CreditCard size={20} />}
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-800">
-                    {currentView === AppView.SETTINGS ? 'Account Settings' : 'Billing & Plans'}
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    {currentView === AppView.SETTINGS ? 'Manage your profile and preferences' : 'Manage your subscription and billing'}
-                  </p>
-                </div>
-              </div>
-              
-              {/* Notification Bell */}
-              <button
-                onClick={() => setShowNotifications(true)}
-                className="relative p-3 hover:bg-slate-100 rounded-xl transition-colors"
-              >
-                <Bell size={20} className="text-slate-600" />
-                {unreadCount > 0 && (
-                  <div className="absolute top-2 right-2 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                    {unreadCount > 9 ? '9+' : unreadCount}
+        {
+          (currentView === AppView.SETTINGS || currentView === AppView.BILLING) && (
+            <div className="bg-white border-b border-slate-200 px-6 py-4 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
+                    {currentView === AppView.SETTINGS ? <Settings size={20} /> : <CreditCard size={20} />}
                   </div>
-                )}
-              </button>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-800">
+                      {currentView === AppView.SETTINGS ? 'Account Settings' : 'Billing & Plans'}
+                    </h2>
+                    <p className="text-xs text-slate-400">
+                      {currentView === AppView.SETTINGS ? 'Manage your profile and preferences' : 'Manage your subscription and billing'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Notification Bell */}
+                <button
+                  onClick={() => setShowNotifications(true)}
+                  className="relative p-3 hover:bg-slate-100 rounded-xl transition-colors"
+                >
+                  <Bell size={20} className="text-slate-600" />
+                  {unreadCount > 0 && (
+                    <div className="absolute top-2 right-2 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </div>
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )
+        }
 
         {/* Content Area - Flexible */}
         <div className={`flex-1 overflow-hidden ${currentView === AppView.BUILDER ? '' : 'p-6 overflow-y-auto'}`}>
@@ -477,29 +453,29 @@ const AppLayout = () => {
           ) : (
             <>
               {currentView === AppView.DASHBOARD && <DashboardPage setCurrentView={setCurrentView} />}
-        {currentView === AppView.BUILDER && (
-          <AgentBuilderNew
-            agentConfig={agentConfig}
-            setAgentConfig={setAgentConfig}
-            activeTab={activeBuilderTab}
-            setActiveTab={setActiveBuilderTab}
-            isIngesting={isIngesting}
-            ingestionProgress={ingestionProgress}
-            urlInput={urlInput}
-            setUrlInput={setUrlInput}
-            handleFileUpload={handleFileUpload}
-            handleUrlScrape={handleUrlScrape}
-            toggleTool={toggleTool}
-            addQuickReply={addQuickReply}
-            removeQuickReply={removeQuickReply}
-            newQuickReply={newQuickReply}
-            setNewQuickReply={setNewQuickReply}
-            handleLogoUpload={handleLogoUpload}
-            handlePlayVoicePreview={handlePlayVoicePreview}
-            isPlayingPreview={isPlayingPreview}
-            currentProjectId={currentBot?.id}
-          />
-        )}
+              {currentView === AppView.BUILDER && (
+                <AgentBuilderNew
+                  agentConfig={agentConfig}
+                  setAgentConfig={setAgentConfig}
+                  activeTab={activeBuilderTab}
+                  setActiveTab={setActiveBuilderTab}
+                  isIngesting={isIngesting}
+                  ingestionProgress={ingestionProgress}
+                  urlInput={urlInput}
+                  setUrlInput={setUrlInput}
+                  handleFileUpload={handleFileUpload}
+                  handleUrlScrape={handleUrlScrape}
+                  toggleTool={toggleTool}
+                  addQuickReply={addQuickReply}
+                  removeQuickReply={removeQuickReply}
+                  newQuickReply={newQuickReply}
+                  setNewQuickReply={setNewQuickReply}
+                  handleLogoUpload={handleLogoUpload}
+                  handlePlayVoicePreview={handlePlayVoicePreview}
+                  isPlayingPreview={isPlayingPreview}
+                  currentProjectId={currentBot?.id}
+                />
+              )}
               {currentView === AppView.ANALYTICS && <AnalyticsPage />}
               {currentView === AppView.HISTORY && <HistoryPage />}
               {currentView === AppView.INTEGRATION && <IntegrationPageNew />}
@@ -509,11 +485,11 @@ const AppLayout = () => {
             </>
           )}
         </div>
-      </main>
+      </main >
 
       {/* Modals and Overlays */}
       {isDeleting && <LoadingOverlay text="Deleting organization..." variant="orbit" />}
-      
+
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         title={confirmModal.title}
@@ -528,14 +504,16 @@ const AppLayout = () => {
         onClose={() => setShowNotifications(false)}
       />
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
-    </div>
+      {
+        toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )
+      }
+    </div >
   );
 };
 

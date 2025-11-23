@@ -85,7 +85,7 @@ const Sidebar = memo(({
           </div>
           {!isSidebarCollapsed && (
             <div>
-              <h1 className="font-bold text-lg text-white tracking-tight">Verdant<span className="text-emerald-400">AI</span></h1>
+              <h1 className="font-bold text-lg text-white tracking-tight">Web<span className="text-emerald-400">bot</span></h1>
               <p className="text-[10px] text-slate-400 font-medium tracking-wider uppercase">Enterprise Agent</p>
             </div>
           )}
@@ -94,7 +94,7 @@ const Sidebar = memo(({
         {/* Project Selector */}
         {!isSidebarCollapsed ? (
           <div className="relative">
-            <button 
+            <button
               onClick={() => setShowProjectDropdown(!showProjectDropdown)}
               className="w-full bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 rounded-xl p-3 flex items-center justify-between transition-all"
             >
@@ -118,16 +118,16 @@ const Sidebar = memo(({
                         {currentProject?.id === p.id && <Check size={12} className="text-emerald-400 flex-shrink-0" />}
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                        <button 
-                          onClick={(e) => handleRenameProject(p, e)} 
-                          className="p-1 text-slate-500 hover:text-blue-400 hover:bg-slate-600 rounded transition-colors" 
+                        <button
+                          onClick={(e) => handleRenameProject(p, e)}
+                          className="p-1 text-slate-500 hover:text-blue-400 hover:bg-slate-600 rounded transition-colors"
                           title="Rename"
                         >
                           <Edit2 size={12} />
                         </button>
-                        <button 
-                          onClick={(e) => handleDeleteOrganization(p, e)} 
-                          className="p-1 text-slate-500 hover:text-red-400 hover:bg-slate-600 rounded transition-colors" 
+                        <button
+                          onClick={(e) => handleDeleteOrganization(p, e)}
+                          className="p-1 text-slate-500 hover:text-red-400 hover:bg-slate-600 rounded transition-colors"
                           title="Delete"
                         >
                           <X size={12} />
@@ -159,16 +159,15 @@ const Sidebar = memo(({
         {navItems.map((item) => {
           const isActive = currentView === item.view;
           const Icon = item.icon;
-          
+
           return (
             <button
               key={item.view}
               onClick={() => setCurrentView(item.view)}
-              className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-start'} gap-3 px-3 py-2.5 rounded-lg transition-all relative group ${
-                isActive
+              className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-start'} gap-3 px-3 py-2.5 rounded-lg transition-all relative group ${isActive
                   ? 'bg-emerald-500/10 text-emerald-400'
                   : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
-              }`}
+                }`}
               title={isSidebarCollapsed ? item.label : undefined}
             >
               <Icon size={20} className="flex-shrink-0" />
@@ -207,17 +206,17 @@ const Sidebar = memo(({
               ];
               const completed = fields.filter(f => f && String(f).trim() !== '').length;
               const percentage = Math.round((completed / fields.length) * 100);
-              
+
               // Debug log
-              console.log('Profile completion:', { 
-                email: profile?.email, 
-                full_name: profile?.full_name, 
-                company_name: profile?.company_name, 
+              console.log('Profile completion:', {
+                email: profile?.email,
+                full_name: profile?.full_name,
+                company_name: profile?.company_name,
                 phone_number: profile?.phone_number,
-                completed, 
-                percentage 
+                completed,
+                percentage
               });
-              
+
               if (percentage < 100) {
                 return (
                   <div className="mb-3 px-3 py-2 bg-slate-800/50 rounded-lg border border-slate-700/50">
@@ -226,7 +225,7 @@ const Sidebar = memo(({
                       <span className="text-xs font-medium text-emerald-400">{percentage}%</span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                      <div 
+                      <div
                         className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
                         style={{ width: `${percentage}%` }}
                       ></div>
@@ -238,11 +237,11 @@ const Sidebar = memo(({
             })()}
           </>
         )}
-        
+
         <div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'justify-center' : ''}`}>
           <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-emerald-500 to-emerald-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-            {profile?.full_name ? 
-              profile.full_name.substring(0, 2).toUpperCase() : 
+            {profile?.full_name ?
+              profile.full_name.substring(0, 2).toUpperCase() :
               (userEmail ? userEmail.substring(0, 2).toUpperCase() : 'U')
             }
           </div>

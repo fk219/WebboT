@@ -71,7 +71,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config, previewMode = false, us
     // Initialize session if not exists and we have a projectId
     let currentSessionId = sessionId;
     if (!currentSessionId && projectId) {
-      currentSessionId = await supabaseService.createSession(projectId, userId);
+      currentSessionId = await supabaseService.createSession(projectId, userId, previewMode);
       setSessionId(currentSessionId);
     }
 
@@ -92,7 +92,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config, previewMode = false, us
     }
 
     // Call Gemini Service
-    const response = await chatWithAgent(config, messages, userMsg.text, userId, projectId);
+    const response = await chatWithAgent(config, messages, userMsg.text, userId, projectId, previewMode, currentSessionId || undefined);
 
     setIsTyping(false);
     setMessages((prev) => [...prev, response]);
@@ -105,7 +105,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config, previewMode = false, us
 
   const toggleCall = async () => {
     console.log('📞 Toggle Call clicked. Current state:', { isCallActive, hasLiveSession: !!liveSessionRef.current });
-    
+
     if (isCallActive) {
       // End Call
       console.log('🔴 Ending call...');
@@ -125,7 +125,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config, previewMode = false, us
       // Ensure session exists
       let currentSessionId = sessionId;
       if (!currentSessionId && projectId) {
-        currentSessionId = await supabaseService.createSession(projectId, userId);
+        currentSessionId = await supabaseService.createSession(projectId, userId, previewMode);
         setSessionId(currentSessionId);
       }
 
@@ -155,7 +155,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config, previewMode = false, us
           if (activeSessionId) {
             supabaseService.saveChatMessage(activeSessionId, role, text);
           }
-        }
+        },
+        userId,
+        projectId,
+        previewMode,
+        currentSessionId || undefined
       );
 
       try {
@@ -423,12 +427,12 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config, previewMode = false, us
             {(() => {
               // Debug: Log the entire voice config
               console.log('🎤 FULL Voice Config:', JSON.stringify(config.voice, null, 2));
-              
+
               // Default voice.enabled to true if undefined (for backward compatibility)
               const voiceEnabled = config.voice?.enabled !== false;
               const phoneCallEnabled = config.voice?.phoneCallEnabled;
               const shouldShowButton = voiceEnabled && phoneCallEnabled !== false;
-              
+
               console.log('🎤 Call button render check:', {
                 voiceEnabled,
                 phoneCallEnabled,
@@ -439,13 +443,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config, previewMode = false, us
                 condition2: phoneCallEnabled !== false,
                 finalResult: voiceEnabled && phoneCallEnabled !== false
               });
-              
+
               if (!shouldShowButton) {
                 console.warn('❌ Call button NOT showing because:', {
                   reason: !voiceEnabled ? 'voice.enabled is false' : 'phoneCallEnabled is false'
                 });
               }
-              
+
               return shouldShowButton ? (
                 <button
                   onClick={toggleCall}
@@ -461,12 +465,12 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config, previewMode = false, us
               <X size={20} />
             </button>
           </div>
-          
+
           {/* DEBUG: Show voice config status */}
           {previewMode && (
             <div className="absolute top-full left-0 right-0 bg-yellow-100 border border-yellow-300 p-2 text-xs z-50">
-              <strong>DEBUG:</strong> voice.enabled={String(config.voice?.enabled)} | 
-              phoneCallEnabled={String(config.voice?.phoneCallEnabled)} | 
+              <strong>DEBUG:</strong> voice.enabled={String(config.voice?.enabled)} |
+              phoneCallEnabled={String(config.voice?.phoneCallEnabled)} |
               shouldShow={String(config.voice?.enabled && config.voice?.phoneCallEnabled !== false)}
             </div>
           )}
@@ -647,7 +651,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config, previewMode = false, us
           {config.theme.showBranding && (
             <div className="text-center mt-3">
               <span className={`text-xs font-medium tracking-wide ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                Powered by <span className="text-emerald-600 font-semibold">VerdantAI</span>
+                Powered by <span className="text-emerald-600 font-semibold">Webbot</span>
               </span>
             </div>
           )}
