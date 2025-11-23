@@ -1,0 +1,7 @@
+{
+  "name": "VerdantAI Embed Suite",
+  "description": "A premium, no-code SaaS for creating and embedding Gemini-powered, knowledge-grounded conversational agents.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
