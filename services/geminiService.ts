@@ -65,16 +65,41 @@ export const chatWithAgent = async (
 
     const ai = new GoogleGenAI({ apiKey });
 
-    const systemInstruction = `
+    // Add knowledge base to system instruction if small, otherwise use context caching
+    const knowledgeBase = agent.knowledgeContext || "";
+    const useContextCaching = knowledgeBase.length > 10000; // Cache if > 10k chars
+
+    let systemInstruction = `
       You are an AI agent named ${agent.name}.
       TONE & STYLE: ${agent.systemInstruction}
-      KNOWLEDGE BASE: ${agent.knowledgeContext || "No specific knowledge base provided."}
     `;
+
+    if (!useContextCaching && knowledgeBase) {
+      // Small knowledge base - add to system instruction
+      systemInstruction += `\nKNOWLEDGE BASE: ${knowledgeBase}`;
+    }
 
     const chatHistory = history.slice(-6).map(msg => ({
       role: msg.role,
       parts: [{ text: msg.text }]
     }));
+
+    // Enable Google Search if configured
+    const tools = agent.tools?.includes('googleSearch') 
+      ? [{ googleSearch: {} }] 
+      : undefined;
+
+    // For large knowledge bases, prepend to history instead of system instruction
+    if (useContextCaching && knowledgeBase) {
+      chatHistory.unshift({
+        role: 'user',
+        parts: [{ text: `Here is the knowledge base you should reference:\n\n${knowledgeBase}` }]
+      });
+      chatHistory.splice(1, 0, {
+        role: 'model',
+        parts: [{ text: 'I have reviewed the knowledge base and will use it to answer questions accurately.' }]
+      });
+    }
 
     const chat = ai.chats.create({
       model: MODEL_NAME,
@@ -82,6 +107,7 @@ export const chatWithAgent = async (
         systemInstruction: systemInstruction,
         temperature: 0.7,
         maxOutputTokens: agent.maxReplyTokens,
+        tools: tools,
       },
       history: chatHistory
     });
@@ -97,15 +123,32 @@ export const chatWithAgent = async (
       await supabaseService.recordUsage(userId, projectId, totalTokens, isTest, sessionId);
     }
 
-    const citations = agent.knowledgeContext && agent.knowledgeContext.length > 0
-      ? [{ title: "Company Knowledge Base", url: "#" }]
-      : [];
+    // Extract citations from Google Search grounding
+    const citations: { title: string; url: string }[] = [];
+    
+    // Add knowledge base citation if available
+    if (agent.knowledgeContext && agent.knowledgeContext.length > 0) {
+      citations.push({ title: "Company Knowledge Base", url: "#" });
+    }
+
+    // Add Google Search citations if available
+    if (result.candidates?.[0]?.groundingMetadata?.groundingChunks) {
+      const chunks = result.candidates[0].groundingMetadata.groundingChunks;
+      chunks.forEach((chunk: any) => {
+        if (chunk.web?.uri && chunk.web?.title) {
+          citations.push({
+            title: chunk.web.title,
+            url: chunk.web.uri
+          });
+        }
+      });
+    }
 
     return {
       id: crypto.randomUUID(),
       role: 'model',
       text: responseText,
-      citations: citations,
+      citations: citations.length > 0 ? citations : undefined,
       timestamp: new Date()
     };
 
