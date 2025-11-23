@@ -47,45 +47,82 @@ export const supabaseService = {
     },
 
     // Projects
+    // Projects (Legacy support - maps Bots to Projects)
     async getProjects(userId: string): Promise<Project[]> {
         const { data, error } = await supabase
-            .from('projects')
+            .from('bots')
             .select('*')
-            .eq('user_id', userId)
+            .eq('created_by', userId)
             .order('created_at', { ascending: false });
 
         if (error) {
-            console.error('Error fetching projects:', error);
+            console.error('Error fetching projects (bots):', error);
             return [];
         }
-        return data || [];
+
+        // Map Bot to Project interface
+        return (data || []).map((bot: any) => ({
+            id: bot.id,
+            user_id: bot.created_by,
+            name: bot.name,
+            config: bot.config,
+            created_at: bot.created_at
+        }));
     },
 
     async createProject(userId: string, name: string, config: AgentConfig): Promise<Project | null> {
+        // 1. Get user's default organization
+        const { data: orgs } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('owner_id', userId)
+            .limit(1);
+
+        if (!orgs || orgs.length === 0) {
+            console.error('No organization found for user');
+            return null;
+        }
+
+        const orgId = orgs[0].id;
+
+        // 2. Create Bot
         const { data, error } = await supabase
-            .from('projects')
-            .insert([{ user_id: userId, name, config }])
+            .from('bots')
+            .insert([{
+                organization_id: orgId,
+                created_by: userId,
+                name,
+                config,
+                is_active: true
+            }])
             .select()
             .single();
 
         if (error) {
-            console.error('Error creating project:', error);
+            console.error('Error creating project (bot):', error);
             return null;
         }
-        return data;
+
+        return {
+            id: data.id,
+            user_id: data.created_by,
+            name: data.name,
+            config: data.config,
+            created_at: data.created_at
+        };
     },
 
     async updateProject(projectId: string, config: AgentConfig, name?: string): Promise<boolean> {
-        const updates: any = { config };
+        const updates: any = { config, updated_at: new Date().toISOString() };
         if (name) updates.name = name;
 
         const { error } = await supabase
-            .from('projects')
+            .from('bots')
             .update(updates)
             .eq('id', projectId);
 
         if (error) {
-            console.error('Error updating project:', error);
+            console.error('Error updating project (bot):', error);
             return false;
         }
         return true;
@@ -98,13 +135,13 @@ export const supabaseService = {
             await supabase
                 .from('usage_logs')
                 .delete()
-                .eq('project_id', projectId);
+                .eq('bot_id', projectId);
 
             // Delete chat messages through sessions
             const { data: sessions } = await supabase
                 .from('chat_sessions')
                 .select('id')
-                .eq('project_id', projectId);
+                .eq('bot_id', projectId);
 
             if (sessions && sessions.length > 0) {
                 const sessionIds = sessions.map(s => s.id);
@@ -118,11 +155,11 @@ export const supabaseService = {
             await supabase
                 .from('chat_sessions')
                 .delete()
-                .eq('project_id', projectId);
+                .eq('bot_id', projectId);
 
-            // Finally delete the project
+            // Finally delete the bot
             const { error } = await supabase
-                .from('projects')
+                .from('bots')
                 .delete()
                 .eq('id', projectId);
 
@@ -194,10 +231,8 @@ export const supabaseService = {
             .from('usage_logs')
             .insert([{
                 user_id: userId,
-                project_id: projectId,
-                tokens_used: tokens,
-                is_test: isTest,
-                session_id: sessionId
+                bot_id: projectId, // Map projectId to bot_id
+                tokens_used: tokens
             }]);
 
         if (error) {
@@ -210,9 +245,8 @@ export const supabaseService = {
         const { data, error } = await supabase
             .from('chat_sessions')
             .insert([{
-                project_id: projectId,
-                user_id: userId,
-                is_test: isTest
+                bot_id: projectId, // Map projectId to bot_id
+                user_id: userId
             }])
             .select('id')
             .single();
@@ -242,7 +276,6 @@ export const supabaseService = {
                 id, 
                 created_at, 
                 user_id,
-                is_test,
                 chat_messages (
                     id, role, text, timestamp
                 ),
@@ -250,7 +283,7 @@ export const supabaseService = {
                     tokens_used
                 )
             `)
-            .eq('project_id', projectId)
+            .eq('bot_id', projectId)
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -278,7 +311,7 @@ export const supabaseService = {
         const { count: totalConversations } = await supabase
             .from('chat_sessions')
             .select('*', { count: 'exact', head: true })
-            .in('project_id', projectIds);
+            .in('bot_id', projectIds);
 
         // 3. Get total tokens
         const totalTokens = await this.getUsage(userId);

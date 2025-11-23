@@ -200,6 +200,8 @@ export class LiveSession {
   private sessionId?: string;
   private startTime: number = 0;
 
+  private isConnected: boolean = false;
+
   constructor(
     config: AgentConfig,
     onDisconnect: (error?: string) => void,
@@ -270,16 +272,17 @@ export class LiveSession {
         config: {
           responseModalities: [Modality.AUDIO, Modality.TEXT], // Request TEXT as well for stability
           // Request transcription for both input (user) and output (model)
-          inputAudioTranscription: {},
-          outputAudioTranscription: {},
+          // inputAudioTranscription: { model: "google-1.0-pro" }, // Removed empty object to prevent errors
+          // outputAudioTranscription: { model: "google-1.0-pro" }, // Removed empty object to prevent errors
           speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: this.config.voice.name || 'Kore' } },
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: this.getValidVoiceName(this.config.voice.name) } },
           },
           systemInstruction: `You are ${this.config.name}. ${this.config.systemInstruction}. Language: ${this.config.voice.language || 'English'}. Keep responses concise.`,
         },
         callbacks: {
           onopen: async () => {
             console.log("✅ Webbot: Voice Session Opened");
+            this.isConnected = true;
             this.startTime = Date.now();
             await this.startInputStreaming(sessionPromise);
           },
@@ -288,8 +291,9 @@ export class LiveSession {
             // console.log("📨 Server Message:", message);
             this.handleServerMessage(message);
           },
-          onclose: () => {
-            console.log("🔌 Webbot: Voice Session Closed");
+          onclose: (event: any) => {
+            console.log("🔌 Webbot: Voice Session Closed", event); // Log event details
+            this.isConnected = false;
             this.flushTranscripts(); // Ensure any remaining text is saved
 
             // Record Usage (Time-based estimation: ~100 tokens per minute for audio)
@@ -304,6 +308,7 @@ export class LiveSession {
           },
           onerror: (err) => {
             console.error("❌ Webbot: Voice Session Error", err);
+            this.isConnected = false;
             this.cleanup();
             this.onDisconnect("Connection error occurred. Please check your internet connection and try again.");
           }
@@ -332,23 +337,32 @@ export class LiveSession {
       this.processor = this.inputAudioContext.createScriptProcessor(4096, 1, 1);
 
       this.processor.onaudioprocess = (e) => {
+        if (!this.isConnected) return; // Stop processing if disconnected
+
         const inputData = e.inputBuffer.getChannelData(0);
         const pcmData = this.floatTo16BitPCM(inputData);
         const base64 = this.arrayBufferToBase64(pcmData);
 
-        sessionPromise.then((session) => {
+        sessionPromise.then(async (session) => {
+          if (!this.isConnected) return; // Double check inside promise
           try {
-            session.sendRealtimeInput({
+            await session.sendRealtimeInput({
               media: {
                 mimeType: 'audio/pcm;rate=16000',
                 data: base64
               }
             });
-          } catch (sendErr) {
-            console.error("⚠️ Error sending audio frame:", sendErr);
+          } catch (sendErr: any) {
+            // Ignore errors if we are already closing or if it's the specific WebSocket error
+            const errorMessage = sendErr?.message || String(sendErr);
+            if (this.isConnected && !errorMessage.includes('CLOSING or CLOSED')) {
+              console.error("⚠️ Error sending audio frame:", sendErr);
+            }
           }
         }).catch(err => {
-          console.error("⚠️ Session promise error in audio process:", err);
+          if (this.isConnected) {
+            console.error("⚠️ Session promise error in audio process:", err);
+          }
         });
       };
 
@@ -506,5 +520,29 @@ export class LiveSession {
       }
     }
     return buffer;
+  }
+  private getValidVoiceName(voiceName?: string): string {
+    const validVoices = ['Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede'];
+    if (voiceName && validVoices.includes(voiceName)) {
+      return voiceName;
+    }
+
+    // Map OpenAI voices to Gemini equivalents
+    const mapping: Record<string, string> = {
+      'Alloy': 'Puck',
+      'Echo': 'Fenrir',
+      'Fable': 'Charon',
+      'Onyx': 'Fenrir',
+      'Nova': 'Aoede',
+      'Shimmer': 'Aoede'
+    };
+
+    if (voiceName && mapping[voiceName]) {
+      console.log(`⚠️ Mapped invalid voice '${voiceName}' to '${mapping[voiceName]}'`);
+      return mapping[voiceName];
+    }
+
+    console.warn(`⚠️ Unknown voice '${voiceName}', defaulting to 'Kore'`);
+    return 'Kore';
   }
 }
