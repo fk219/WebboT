@@ -137,9 +137,14 @@ const AppLayout = () => {
       const configWithDefaults = {
         ...loadedConfig,
         voice: {
+          enabled: true,
+          name: 'Kore',
+          language: 'English',
+          speed: 1.0,
+          pitch: 1.0,
+          phoneCallEnabled: true,
+          callButtonIcon: 'Phone',
           ...loadedConfig.voice,
-          enabled: loadedConfig.voice?.enabled !== false,
-          phoneCallEnabled: loadedConfig.voice?.phoneCallEnabled !== false
         }
       };
       setAgentConfig(configWithDefaults);

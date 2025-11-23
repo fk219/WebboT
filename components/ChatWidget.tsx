@@ -424,56 +424,20 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ config, previewMode = false, us
           </div>
 
           <div className="flex items-center space-x-2">
-            {(() => {
-              // Debug: Log the entire voice config
-              console.log('🎤 FULL Voice Config:', JSON.stringify(config.voice, null, 2));
-
-              // Default voice.enabled to true if undefined (for backward compatibility)
-              const voiceEnabled = config.voice?.enabled !== false;
-              const phoneCallEnabled = config.voice?.phoneCallEnabled;
-              const shouldShowButton = voiceEnabled && phoneCallEnabled !== false;
-
-              console.log('🎤 Call button render check:', {
-                voiceEnabled,
-                phoneCallEnabled,
-                phoneCallEnabledType: typeof phoneCallEnabled,
-                shouldShowButton,
-                isCallActive,
-                condition1: voiceEnabled,
-                condition2: phoneCallEnabled !== false,
-                finalResult: voiceEnabled && phoneCallEnabled !== false
-              });
-
-              if (!shouldShowButton) {
-                console.warn('❌ Call button NOT showing because:', {
-                  reason: !voiceEnabled ? 'voice.enabled is false' : 'phoneCallEnabled is false'
-                });
-              }
-
-              return shouldShowButton ? (
-                <button
-                  onClick={toggleCall}
-                  className={`w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 ${isCallActive ? 'bg-white text-red-500 shadow-lg scale-110' : 'bg-white/20 text-white hover:bg-white/30'}`}
-                  title={isCallActive ? "End Call" : "Start Voice Call"}
-                >
-                  {isCallActive ? <Phone size={18} className="rotate-[135deg]" /> : getCallButtonIcon()}
-                </button>
-              ) : null;
-            })()}
+            {config.voice?.enabled !== false && config.voice?.phoneCallEnabled !== false && (
+              <button
+                onClick={toggleCall}
+                className={`w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 ${isCallActive ? 'bg-white text-red-500 shadow-lg scale-110' : 'bg-white/20 text-white hover:bg-white/30'}`}
+                title={isCallActive ? "End Call" : "Start Voice Call"}
+              >
+                {isCallActive ? <Phone size={18} className="rotate-[135deg]" /> : getCallButtonIcon()}
+              </button>
+            )}
 
             <button onClick={() => setIsOpen(false)} className="p-2 rounded-full hover:bg-white/10 text-white/90 hover:text-white transition-colors">
               <X size={20} />
             </button>
           </div>
-
-          {/* DEBUG: Show voice config status */}
-          {previewMode && (
-            <div className="absolute top-full left-0 right-0 bg-yellow-100 border border-yellow-300 p-2 text-xs z-50">
-              <strong>DEBUG:</strong> voice.enabled={String(config.voice?.enabled)} |
-              phoneCallEnabled={String(config.voice?.phoneCallEnabled)} |
-              shouldShow={String(config.voice?.enabled && config.voice?.phoneCallEnabled !== false)}
-            </div>
-          )}
         </div>
 
         {/* Call Overlay */}

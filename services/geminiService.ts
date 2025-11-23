@@ -21,13 +21,15 @@ const getApiKey = () => {
     hasProcessEnvGeminiKey: !!process.env.GEMINI_API_KEY,
     hasViteEnvKey: !!(import.meta.env && import.meta.env.VITE_GEMINI_API_KEY),
     keyFound: !!key,
-    keyLength: key?.length || 0
+    keyLength: key?.length || 0,
+    keyPrefix: key?.substring(0, 8) || 'none'
   });
 
   if (!key) {
     console.error("❌ VerdantAI: Missing API Key. Please set VITE_GEMINI_API_KEY in .env.local and restart the dev server");
   } else {
     console.log("✅ VerdantAI: API Key loaded successfully");
+    console.log("🔑 Using key starting with:", key.substring(0, 12) + "...");
   }
   return key;
 };
@@ -179,6 +181,7 @@ export const previewVoice = async (
 export class LiveSession {
   private config: AgentConfig;
   private session: any = null;
+  private resolvedSession: any = null;
   private inputAudioContext: AudioContext | null = null;
   private outputAudioContext: AudioContext | null = null;
   private inputSource: MediaStreamAudioSourceNode | null = null;
@@ -267,24 +270,33 @@ export class LiveSession {
       const ai = new GoogleGenAI({ apiKey });
       console.log("✅ GoogleGenAI client initialized");
 
+      const validVoiceName = this.getValidVoiceName(this.config.voice.name);
+      console.log("🎤 Using voice:", validVoiceName);
+
       const sessionPromise = ai.live.connect({
         model: LIVE_MODEL_NAME,
         config: {
-          responseModalities: [Modality.AUDIO, Modality.TEXT], // Request TEXT as well for stability
-          // Request transcription for both input (user) and output (model)
-          // inputAudioTranscription: { model: "google-1.0-pro" }, // Removed empty object to prevent errors
-          // outputAudioTranscription: { model: "google-1.0-pro" }, // Removed empty object to prevent errors
+          responseModalities: [Modality.AUDIO],
           speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: this.getValidVoiceName(this.config.voice.name) } },
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: validVoiceName } },
           },
-          systemInstruction: `You are ${this.config.name}. ${this.config.systemInstruction}. Language: ${this.config.voice.language || 'English'}. Keep responses concise.`,
+          systemInstruction: `You are ${this.config.name}. ${this.config.systemInstruction}. Language: ${this.config.voice.language || 'English'}. Keep responses concise and conversational.`,
         },
         callbacks: {
           onopen: async () => {
             console.log("✅ Webbot: Voice Session Opened");
             this.isConnected = true;
             this.startTime = Date.now();
-            await this.startInputStreaming(sessionPromise);
+            
+            // Wait for session to resolve before starting audio streaming
+            try {
+              this.resolvedSession = await sessionPromise;
+              console.log("✅ Session resolved, starting audio streaming");
+              await this.startInputStreaming(this.resolvedSession);
+            } catch (err) {
+              console.error("❌ Failed to resolve session:", err);
+              this.disconnect();
+            }
           },
           onmessage: async (message: LiveServerMessage) => {
             // Uncomment for detailed message debugging:
@@ -292,25 +304,43 @@ export class LiveSession {
             this.handleServerMessage(message);
           },
           onclose: (event: any) => {
-            console.log("🔌 Webbot: Voice Session Closed", event); // Log event details
-            this.isConnected = false;
-            this.flushTranscripts(); // Ensure any remaining text is saved
-
-            // Record Usage (Time-based estimation: ~100 tokens per minute for audio)
-            if (this.userId && this.projectId && this.startTime > 0) {
-              const durationSeconds = (Date.now() - this.startTime) / 1000;
-              const estimatedTokens = Math.ceil(durationSeconds * 2); // Approx 2 tokens per second
-              supabaseService.recordUsage(this.userId, this.projectId, estimatedTokens, this.isTest, this.sessionId);
+            console.log("🔌 Webbot: Voice Session Closed", event);
+            
+            // Check for quota error
+            if (event.code === 1011 && event.reason?.includes('quota')) {
+              console.error("❌ QUOTA ERROR: The Gemini Live API requires billing to be enabled.");
+              console.error("📋 To fix this:");
+              console.error("   1. Go to https://aistudio.google.com/apikey");
+              console.error("   2. Enable billing for your API key");
+              console.error("   3. The Live API is NOT available on the free tier");
+              this.isConnected = false;
+              this.cleanup();
+              this.onDisconnect("⚠️ Gemini Live API requires billing. Please enable billing at https://aistudio.google.com/apikey");
+              return;
             }
+            
+            if (this.isConnected) {
+              this.isConnected = false;
+              this.flushTranscripts();
 
-            this.cleanup();
-            this.onDisconnect();
+              // Record Usage (Time-based estimation: ~100 tokens per minute for audio)
+              if (this.userId && this.projectId && this.startTime > 0) {
+                const durationSeconds = (Date.now() - this.startTime) / 1000;
+                const estimatedTokens = Math.ceil(durationSeconds * 2);
+                supabaseService.recordUsage(this.userId, this.projectId, estimatedTokens, this.isTest, this.sessionId);
+              }
+
+              this.cleanup();
+              this.onDisconnect();
+            }
           },
           onerror: (err) => {
             console.error("❌ Webbot: Voice Session Error", err);
-            this.isConnected = false;
-            this.cleanup();
-            this.onDisconnect("Connection error occurred. Please check your internet connection and try again.");
+            if (this.isConnected) {
+              this.isConnected = false;
+              this.cleanup();
+              this.onDisconnect("Connection error occurred. Please check your internet connection and try again.");
+            }
           }
         }
       });
@@ -329,47 +359,45 @@ export class LiveSession {
     }
   }
 
-  private async startInputStreaming(sessionPromise: Promise<any>) {
-    if (!this.inputAudioContext || !this.mediaStream) return;
+  private async startInputStreaming(session: any) {
+    if (!this.inputAudioContext || !this.mediaStream || !session) {
+      console.error("❌ Cannot start streaming - missing requirements");
+      return;
+    }
 
     try {
+      console.log("🎙️ Setting up audio input streaming...");
       this.inputSource = this.inputAudioContext.createMediaStreamSource(this.mediaStream);
       this.processor = this.inputAudioContext.createScriptProcessor(4096, 1, 1);
 
       this.processor.onaudioprocess = (e) => {
-        if (!this.isConnected) return; // Stop processing if disconnected
+        if (!this.isConnected || !this.resolvedSession) return;
 
         const inputData = e.inputBuffer.getChannelData(0);
         const pcmData = this.floatTo16BitPCM(inputData);
         const base64 = this.arrayBufferToBase64(pcmData);
 
-        sessionPromise.then(async (session) => {
-          if (!this.isConnected) return; // Double check inside promise
-          try {
-            await session.sendRealtimeInput({
-              media: {
-                mimeType: 'audio/pcm;rate=16000',
-                data: base64
-              }
-            });
-          } catch (sendErr: any) {
-            // Ignore errors if we are already closing or if it's the specific WebSocket error
-            const errorMessage = sendErr?.message || String(sendErr);
-            if (this.isConnected && !errorMessage.includes('CLOSING or CLOSED')) {
-              console.error("⚠️ Error sending audio frame:", sendErr);
+        try {
+          // Send audio using the correct Live API method
+          this.resolvedSession.sendRealtimeInput({
+            audio: {
+              data: base64,
+              mimeType: 'audio/pcm;rate=16000'
             }
+          });
+        } catch (sendErr: any) {
+          const errorMessage = sendErr?.message || String(sendErr);
+          if (this.isConnected && !errorMessage.includes('CLOSING or CLOSED')) {
+            console.error("⚠️ Error sending audio frame:", sendErr);
           }
-        }).catch(err => {
-          if (this.isConnected) {
-            console.error("⚠️ Session promise error in audio process:", err);
-          }
-        });
+        }
       };
 
       this.inputSource.connect(this.processor);
       this.processor.connect(this.inputAudioContext.destination);
+      console.log("✅ Audio streaming started");
     } catch (err) {
-      console.error("Audio streaming setup failed:", err);
+      console.error("❌ Audio streaming setup failed:", err);
       this.disconnect();
     }
   }
@@ -446,10 +474,34 @@ export class LiveSession {
   }
 
   disconnect() {
-    if (this.session) {
-      this.session.then((s: any) => s.close());
+    console.log("🔴 Disconnecting voice session...");
+    this.isConnected = false;
+    
+    if (this.resolvedSession) {
+      try {
+        if (typeof this.resolvedSession.close === 'function') {
+          this.resolvedSession.close();
+        }
+      } catch (err) {
+        console.warn("⚠️ Error closing resolved session:", err);
+      }
+    } else if (this.session) {
+      try {
+        if (this.session.then) {
+          this.session.then((s: any) => {
+            if (s && typeof s.close === 'function') {
+              s.close();
+            }
+          }).catch((err: any) => {
+            console.warn("⚠️ Error closing session:", err);
+          });
+        }
+      } catch (err) {
+        console.warn("⚠️ Error during disconnect:", err);
+      }
     }
-    // Don't cleanup immediately here, wait for onclose callback which calls flushTranscripts
+    
+    // Cleanup will be called by onclose callback
   }
 
   private cleanup() {
