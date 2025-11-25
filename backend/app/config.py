@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql://user:password@localhost:5432/agents_db"
     
+    # Supabase
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+    SUPABASE_SERVICE_KEY: str = ""
+    
     # LLM APIs
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
@@ -43,6 +48,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"  # Allow extra fields from .env
 
 
 settings = Settings()

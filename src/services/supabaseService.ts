@@ -50,7 +50,7 @@ export const supabaseService = {
     // Projects (Legacy support - maps Bots to Projects)
     async getProjects(userId: string): Promise<Project[]> {
         const { data, error } = await supabase
-            .from('bots')
+            .from('agents')
             .select('*')
             .eq('created_by', userId)
             .order('created_at', { ascending: false });
@@ -87,7 +87,7 @@ export const supabaseService = {
 
         // 2. Create Bot
         const { data, error } = await supabase
-            .from('bots')
+            .from('agents')
             .insert([{
                 organization_id: orgId,
                 created_by: userId,
@@ -117,7 +117,7 @@ export const supabaseService = {
         if (name) updates.name = name;
 
         const { error } = await supabase
-            .from('bots')
+            .from('agents')
             .update(updates)
             .eq('id', projectId);
 
@@ -159,7 +159,7 @@ export const supabaseService = {
 
             // Finally delete the bot
             const { error } = await supabase
-                .from('bots')
+                .from('agents')
                 .delete()
                 .eq('id', projectId);
 

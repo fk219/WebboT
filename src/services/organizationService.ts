@@ -34,7 +34,7 @@ export const organizationService = {
     }
 
     const { data: bots, error: botsError } = await supabase
-      .from('bots')
+      .from('agents')
       .select('*')
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false });
@@ -94,7 +94,7 @@ export const organizationService = {
 
   async getBots(organizationId: string): Promise<Bot[]> {
     const { data, error } = await supabase
-      .from('bots')
+      .from('agents')
       .select('*')
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false });
@@ -107,8 +107,8 @@ export const organizationService = {
   },
 
   async getBot(botId: string): Promise<Bot | null> {
-    const { data, error } = await supabase
-      .from('bots')
+    const { data, error} = await supabase
+      .from('agents')
       .select('*')
       .eq('id', botId)
       .single();
@@ -128,7 +128,7 @@ export const organizationService = {
     description?: string
   ): Promise<Bot | null> {
     const { data, error } = await supabase
-      .from('bots')
+      .from('agents')
       .insert([{
         organization_id: organizationId,
         created_by: userId,
@@ -158,7 +158,7 @@ export const organizationService = {
     if (description !== undefined) updates.description = description;
 
     const { error } = await supabase
-      .from('bots')
+      .from('agents')
       .update(updates)
       .eq('id', botId);
 
@@ -196,7 +196,7 @@ export const organizationService = {
         .eq('bot_id', botId);
 
       const { error } = await supabase
-        .from('bots')
+        .from('agents')
         .delete()
         .eq('id', botId);
 
@@ -213,7 +213,7 @@ export const organizationService = {
 
   async toggleBotStatus(botId: string, isActive: boolean): Promise<boolean> {
     const { error } = await supabase
-      .from('bots')
+      .from('agents')
       .update({ is_active: isActive, updated_at: new Date().toISOString() })
       .eq('id', botId);
 
