@@ -1,0 +1,56 @@
+"""
+FastAPI application entry point
+"""
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from .config import settings
+from .api import agents, chat, voice
+
+# Create FastAPI app
+app = FastAPI(
+    title="LangGraph Agent API",
+    description="API for managing and executing LangGraph-powered AI agents",
+    version="1.0.0",
+    debug=settings.DEBUG
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(agents.router, prefix="/api", tags=["agents"])
+app.include_router(chat.router, prefix="/api", tags=["chat"])
+app.include_router(voice.router, prefix="/api", tags=["voice"])
+
+
+@app.get("/")
+async def root():
+    """Root endpoint"""
+    return {
+        "message": "LangGraph Agent API",
+        "version": "1.0.0",
+        "status": "running"
+    }
+
+
+@app.get("/health")
+async def health():
+    """Health check endpoint"""
+    return {"status": "healthy"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "app.main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=settings.DEBUG
+    )
