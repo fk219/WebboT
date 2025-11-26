@@ -30,6 +30,9 @@ import SettingsPage from './src/pages/SettingsPage';
 import BillingPage from './src/pages/BillingPage';
 import { supabaseService, Project } from './src/services/supabaseService';
 import AgentBuilderNew from './src/pages/AgentBuilderNew';
+import AgentListPage from './src/pages/AgentListPage';
+import AgentCreatePage from './src/pages/AgentCreatePage';
+import AgentsRouter from './src/pages/AgentsRouter';
 import HistoryPage from './src/pages/HistoryPage';
 import AnalyticsPage from './src/pages/AnalyticsPage';
 import DashboardPage from './src/pages/DashboardPage';
@@ -481,6 +484,7 @@ const AppLayout = () => {
                   currentProjectId={currentBot?.id}
                 />
               )}
+              {currentView === AppView.AGENTS && <AgentsRouter />}
               {currentView === AppView.ANALYTICS && <AnalyticsPage />}
               {currentView === AppView.HISTORY && <HistoryPage />}
               {currentView === AppView.INTEGRATION && <IntegrationPageNew />}

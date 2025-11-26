@@ -5,7 +5,15 @@ FastAPI application entry point
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .api import agents, chat, voice
+from .api import agents, chat
+
+# Try to import voice features (optional)
+try:
+    from .api import voice
+    VOICE_AVAILABLE = True
+except Exception as e:
+    print(f"⚠️  Voice features disabled: {e}")
+    VOICE_AVAILABLE = False
 
 # Create FastAPI app
 app = FastAPI(
@@ -27,7 +35,13 @@ app.add_middleware(
 # Include routers
 app.include_router(agents.router, prefix="/api", tags=["agents"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
-app.include_router(voice.router, prefix="/api", tags=["voice"])
+
+# Include voice router if available
+if VOICE_AVAILABLE:
+    app.include_router(voice.router, prefix="/api", tags=["voice"])
+    print("✅ Voice features enabled")
+else:
+    print("⚠️  Voice features disabled (missing API keys or dependencies)")
 
 
 @app.get("/")

@@ -15,7 +15,8 @@ import {
   Plus,
   X,
   Edit2,
-  Folder
+  Folder,
+  Sparkles
 } from 'lucide-react';
 import { AppView } from '../../types';
 
@@ -58,7 +59,8 @@ const Sidebar = memo(({
 }: SidebarProps) => {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', view: AppView.DASHBOARD },
-    { icon: Bot, label: 'Agent Builder', view: AppView.BUILDER },
+    { icon: Bot, label: 'Simple Builder', view: AppView.BUILDER },
+    { icon: Sparkles, label: 'LangGraph Agents', view: AppView.AGENTS, badge: 'New' },
     { icon: BarChart3, label: 'Analytics', view: AppView.ANALYTICS },
     { icon: History, label: 'History', view: AppView.HISTORY },
     { icon: Code, label: 'Integration', view: AppView.INTEGRATION },

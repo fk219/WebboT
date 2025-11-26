@@ -2,14 +2,23 @@
 Text-to-Speech implementation
 """
 
-from elevenlabs import generate, set_api_key
-import openai
+try:
+    from elevenlabs.client import ElevenLabs
+    ELEVENLABS_AVAILABLE = True
+except ImportError:
+    ELEVENLABS_AVAILABLE = False
+
+from openai import OpenAI
 from typing import Dict, Any
 from ..config import settings
 
-# Set API keys
-set_api_key(settings.ELEVENLABS_API_KEY)
-openai.api_key = settings.OPENAI_API_KEY
+# Initialize clients
+if ELEVENLABS_AVAILABLE and settings.ELEVENLABS_API_KEY:
+    elevenlabs_client = ElevenLabs(api_key=settings.ELEVENLABS_API_KEY)
+else:
+    elevenlabs_client = None
+
+openai_client = OpenAI(api_key=settings.OPENAI_API_KEY) if settings.OPENAI_API_KEY else None
 
 
 async def text_to_speech(text: str, config: Dict[str, Any]) -> bytes:
@@ -26,14 +35,17 @@ async def text_to_speech(text: str, config: Dict[str, Any]) -> bytes:
 
 async def elevenlabs_tts(text: str, config: Dict) -> bytes:
     """ElevenLabs TTS"""
+    if not elevenlabs_client:
+        raise ValueError("ElevenLabs client not initialized. Check API key.")
+    
     voice_id = config.get("voice_id", "21m00Tcm4TlvDq8ikWAM")
     model = config.get("voice_model", "eleven_turbo_v2")
     
-    audio = generate(
+    # Use new ElevenLabs API
+    audio = elevenlabs_client.generate(
         text=text,
         voice=voice_id,
-        model=model,
-        stream=False
+        model=model
     )
     
     # Convert generator to bytes if needed
@@ -45,11 +57,14 @@ async def elevenlabs_tts(text: str, config: Dict) -> bytes:
 
 async def openai_tts(text: str, config: Dict) -> bytes:
     """OpenAI TTS"""
+    if not openai_client:
+        raise ValueError("OpenAI client not initialized. Check API key.")
+    
     voice = config.get("voice_id", "alloy")
     model = config.get("voice_model", "tts-1")
     speed = config.get("voice_speed", 1.0)
     
-    response = openai.Audio.speech.create(
+    response = openai_client.audio.speech.create(
         model=model,
         voice=voice,
         input=text,

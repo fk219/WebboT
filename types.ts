@@ -62,6 +62,7 @@ export interface AgentConfig {
 export enum AppView {
   DASHBOARD = 'dashboard',
   BUILDER = 'builder',
+  AGENTS = 'agents',
   ANALYTICS = 'analytics',
   HISTORY = 'history',
   INTEGRATION = 'integration',
