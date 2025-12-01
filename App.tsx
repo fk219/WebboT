@@ -36,7 +36,7 @@ import AgentsRouter from './src/pages/AgentsRouter';
 import HistoryPage from './src/pages/HistoryPage';
 import AnalyticsPage from './src/pages/AnalyticsPage';
 import DashboardPage from './src/pages/DashboardPage';
-import IntegrationPageNew from './src/pages/IntegrationPageNew';
+import IntegrationPage from './src/pages/IntegrationPage';
 import ProjectsPage from './src/pages/ProjectsPage';
 import WidgetPage from './src/pages/WidgetPage';
 import { RequireAuth } from './src/components/RequireAuth';
@@ -487,7 +487,7 @@ const AppLayout = () => {
               {currentView === AppView.AGENTS && <AgentsRouter />}
               {currentView === AppView.ANALYTICS && <AnalyticsPage />}
               {currentView === AppView.HISTORY && <HistoryPage />}
-              {currentView === AppView.INTEGRATION && <IntegrationPageNew />}
+              {currentView === AppView.INTEGRATION && <IntegrationPage />}
               {currentView === AppView.SETTINGS && <SettingsPage />}
               {currentView === AppView.BILLING && <BillingPage />}
               {currentView === 'projects' && <ProjectsPage />}

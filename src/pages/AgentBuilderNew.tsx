@@ -175,31 +175,42 @@ const AgentBuilderNew: React.FC<AgentBuilderNewProps> = (props) => {
                     {bots.map((bot) => (
                         <div
                             key={bot.id}
-                            className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${currentBot?.id === bot.id
-                                ? 'border-emerald-500 bg-emerald-50'
-                                : 'border-slate-200 bg-white hover:border-slate-300'
+                            className={`group relative p-4 rounded-xl border transition-all cursor-pointer overflow-hidden ${currentBot?.id === bot.id
+                                ? 'border-emerald-500 bg-emerald-50/50 shadow-md shadow-emerald-100'
+                                : 'border-slate-200 bg-white hover:border-emerald-200 hover:shadow-lg hover:shadow-slate-100'
                                 }`}
                             onClick={() => setCurrentBot(bot)}
                         >
+                            {/* Selection Indicator */}
+                            {currentBot?.id === bot.id && (
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />
+                            )}
+
                             {/* Bot Header */}
-                            <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-start justify-between mb-3 pl-2">
                                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center flex-shrink-0">
-                                        <Bot className="text-white" size={20} />
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105 ${currentBot?.id === bot.id
+                                        ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-200'
+                                        : 'bg-slate-100 group-hover:bg-emerald-100'
+                                        }`}>
+                                        <Bot className={currentBot?.id === bot.id ? 'text-white' : 'text-slate-400 group-hover:text-emerald-600'} size={24} />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <h3 className="font-semibold text-slate-800 truncate">
+                                        <h3 className={`font-bold truncate ${currentBot?.id === bot.id ? 'text-emerald-900' : 'text-slate-800'}`}>
                                             {bot.name}
                                         </h3>
                                         <div className="flex items-center gap-2 mt-1">
                                             {bot.is_active ? (
-                                                <span className="flex items-center gap-1 text-xs text-emerald-600">
-                                                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                                <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
+                                                    <span className="relative flex h-2 w-2">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                                    </span>
                                                     Active
                                                 </span>
                                             ) : (
-                                                <span className="flex items-center gap-1 text-xs text-slate-400">
-                                                    <div className="w-2 h-2 rounded-full bg-slate-300"></div>
+                                                <span className="flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                                                    <div className="w-2 h-2 rounded-full bg-slate-400"></div>
                                                     Inactive
                                                 </span>
                                             )}
@@ -208,14 +219,21 @@ const AgentBuilderNew: React.FC<AgentBuilderNewProps> = (props) => {
                                 </div>
                             </div>
 
-                            {/* Bot Actions */}
-                            <div className="flex items-center gap-2">
+                            {/* Bot Info */}
+                            {bot.description && (
+                                <p className="text-xs text-slate-500 mt-2 line-clamp-2 pl-2 mb-3">
+                                    {bot.description}
+                                </p>
+                            )}
+
+                            {/* Bot Actions - Visible on Hover or Active */}
+                            <div className={`flex items-center gap-2 pl-2 pt-2 border-t border-slate-100 transition-opacity ${currentBot?.id === bot.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setCurrentBot(bot);
                                     }}
-                                    className="flex-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                                    className="flex-1 px-3 py-2 bg-slate-50 hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
                                 >
                                     <Edit2 size={14} />
                                     Edit
@@ -225,9 +243,9 @@ const AgentBuilderNew: React.FC<AgentBuilderNewProps> = (props) => {
                                         e.stopPropagation();
                                         handleToggleStatus(bot.id, bot.is_active);
                                     }}
-                                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 ${bot.is_active
-                                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-700'
-                                        : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
+                                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${bot.is_active
+                                        ? 'bg-amber-50 hover:bg-amber-100 text-amber-600'
+                                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600'
                                         }`}
                                     title={bot.is_active ? 'Deactivate' : 'Activate'}
                                 >
@@ -238,30 +256,23 @@ const AgentBuilderNew: React.FC<AgentBuilderNewProps> = (props) => {
                                         e.stopPropagation();
                                         setShowDeleteConfirm(bot.id);
                                     }}
-                                    className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                                    className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
                                     title="Delete"
                                 >
                                     <Trash2 size={14} />
                                 </button>
                             </div>
-
-                            {/* Bot Info */}
-                            {bot.description && (
-                                <p className="text-xs text-slate-500 mt-2 line-clamp-2">
-                                    {bot.description}
-                                </p>
-                            )}
                         </div>
                     ))}
 
                     {bots.length === 0 && (
-                        <div className="text-center py-12">
-                            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Bot size={32} className="text-slate-400" />
+                        <div className="text-center py-12 px-4 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                <Bot size={32} className="text-slate-300" />
                             </div>
-                            <h3 className="text-sm font-medium text-slate-800 mb-2">No bots yet</h3>
+                            <h3 className="text-sm font-bold text-slate-800 mb-1">No bots yet</h3>
                             <p className="text-xs text-slate-500 mb-4">
-                                Create your first bot to get started
+                                Create your first AI agent to get started
                             </p>
                         </div>
                     )}
@@ -334,31 +345,33 @@ const AgentBuilderNew: React.FC<AgentBuilderNewProps> = (props) => {
             {/* Create Bot Modal */}
             {showCreateBotModal && (
                 <div
-                    className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in"
                     onClick={() => setShowCreateBotModal(false)}
                 >
                     <div
-                        className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden"
+                        className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all scale-100"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header */}
-                        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-6 relative overflow-hidden">
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent)]"></div>
-                            <div className="relative flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-                                        <Sparkles className="text-white" size={24} />
+                        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-8 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
+                            <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-xl"></div>
+
+                            <div className="relative flex items-center justify-between z-10">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 shadow-lg">
+                                        <Sparkles className="text-white drop-shadow-md" size={28} />
                                     </div>
                                     <div>
-                                        <h2 className="text-2xl font-bold text-white">Create New Bot</h2>
-                                        <p className="text-emerald-100 text-sm mt-0.5">
-                                            Build your AI assistant
+                                        <h2 className="text-2xl font-bold text-white tracking-tight">Create Agent</h2>
+                                        <p className="text-emerald-50 text-sm font-medium mt-1">
+                                            Design your new AI assistant
                                         </p>
                                     </div>
                                 </div>
                                 <button
                                     onClick={() => setShowCreateBotModal(false)}
-                                    className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+                                    className="text-white/70 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-xl"
                                 >
                                     <X size={20} />
                                 </button>
@@ -366,43 +379,48 @@ const AgentBuilderNew: React.FC<AgentBuilderNewProps> = (props) => {
                         </div>
 
                         {/* Content */}
-                        <div className="p-6">
-                            <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">
-                                Bot Name
+                        <div className="p-8">
+                            <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
+                                Agent Name
                             </label>
-                            <input
-                                type="text"
-                                value={newBotName}
-                                onChange={(e) => setNewBotName(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && newBotName.trim()) {
-                                        handleCreateBot();
-                                    }
-                                }}
-                                placeholder="e.g., Customer Support Bot"
-                                className="w-full px-4 py-3.5 border-2 border-slate-200 rounded-xl outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all text-slate-800 placeholder-slate-400 font-medium"
-                                autoFocus
-                                disabled={isCreating}
-                            />
-                            <p className="text-xs text-slate-500 mt-2 flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                                Choose a descriptive name for your bot
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Bot size={20} className="text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
+                                </div>
+                                <input
+                                    type="text"
+                                    value={newBotName}
+                                    onChange={(e) => setNewBotName(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && newBotName.trim()) {
+                                            handleCreateBot();
+                                        }
+                                    }}
+                                    placeholder="e.g., Sales Assistant"
+                                    className="w-full pl-11 pr-4 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all text-slate-800 placeholder-slate-400 font-medium text-lg"
+                                    autoFocus
+                                    disabled={isCreating}
+                                />
+                            </div>
+                            <p className="text-xs text-slate-500 mt-3 flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+                                This name will be visible to your users
                             </p>
                         </div>
 
                         {/* Footer */}
-                        <div className="px-6 pb-6 flex gap-3">
+                        <div className="px-8 pb-8 flex gap-4">
                             <button
                                 onClick={() => setShowCreateBotModal(false)}
                                 disabled={isCreating}
-                                className="flex-1 px-6 py-3 border-2 border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 px-6 py-3.5 border-2 border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all font-bold disabled:opacity-50"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleCreateBot}
                                 disabled={!newBotName.trim() || isCreating}
-                                className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all font-semibold shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
+                                className="flex-1 px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl hover:from-emerald-600 hover:to-teal-700 transition-all font-bold shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2 group"
                             >
                                 {isCreating ? (
                                     <>
@@ -411,8 +429,8 @@ const AgentBuilderNew: React.FC<AgentBuilderNewProps> = (props) => {
                                     </>
                                 ) : (
                                     <>
-                                        <Sparkles size={18} />
-                                        Create Bot
+                                        <Sparkles size={18} className="group-hover:scale-110 transition-transform" />
+                                        Create Agent
                                     </>
                                 )}
                             </button>

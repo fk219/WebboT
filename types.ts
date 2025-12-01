@@ -92,7 +92,7 @@ export interface AnalyticsData {
   tokens: number;
 }
 
-export type BuilderTab = 'identity' | 'knowledge' | 'tools' | 'style' | 'voice';
+export type BuilderTab = 'identity' | 'knowledge' | 'tools' | 'style' | 'voice' | 'analysis';
 
 export interface UserProfile {
   id: string;

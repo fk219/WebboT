@@ -48,6 +48,27 @@ export const supabaseService = {
 
     // Projects
     // Projects (Legacy support - maps Bots to Projects)
+    async getProject(projectId: string): Promise<Project | null> {
+        const { data, error } = await supabase
+            .from('agents')
+            .select('*')
+            .eq('id', projectId)
+            .single();
+
+        if (error) {
+            console.error('Error fetching project (bot):', error);
+            return null;
+        }
+
+        return {
+            id: data.id,
+            user_id: data.created_by,
+            name: data.name,
+            config: data.config,
+            created_at: data.created_at
+        };
+    },
+
     async getProjects(userId: string): Promise<Project[]> {
         const { data, error } = await supabase
             .from('agents')

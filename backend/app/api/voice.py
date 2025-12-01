@@ -41,13 +41,19 @@ async def process_voice(
             metadata={"channel": "voice"}
         )
         
-        # TTS: Text -> Audio
-        audio_response = await text_to_speech(result["response"], config)
+        agent_response = result["response"]
         
-        # Return audio
+        # TTS: Text -> Audio
+        audio_response = await text_to_speech(agent_response, config)
+        
+        # Return audio with transcripts in headers
         return Response(
             content=audio_response,
-            media_type="audio/mpeg"
+            media_type="audio/mpeg",
+            headers={
+                "X-User-Transcript": user_text,
+                "X-Agent-Transcript": agent_response,
+            }
         )
     
     except Exception as e:

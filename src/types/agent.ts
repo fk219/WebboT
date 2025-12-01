@@ -7,14 +7,14 @@ export interface Agent {
   organization_id: string;
   name: string;
   description?: string;
-  
+
   // LLM Configuration
   llm_provider: 'openai' | 'anthropic' | 'google' | 'deepseek';
   llm_model: string;
   system_prompt: string;
   temperature: number;
   max_tokens: number;
-  
+
   // Voice Configuration
   voice_provider?: 'elevenlabs' | 'openai' | 'cartesia';
   voice_id?: string;
@@ -22,7 +22,7 @@ export interface Agent {
   voice_speed: number;
   voice_temperature: number;
   voice_volume: number;
-  
+
   // Speech Processing
   responsiveness: number;
   interruption_sensitivity: number;
@@ -30,46 +30,46 @@ export interface Agent {
   backchannel_words: string[];
   normalize_speech: boolean;
   boosted_keywords: string[];
-  
+
   // Ambient & Environment
   ambient_sound: string;
   ambient_volume: number;
-  
+
   // Call Settings
   max_duration_seconds: number;
   end_after_silence_seconds: number;
   voicemail_detection: boolean;
   voicemail_action: 'hangup' | 'leave_message';
   voicemail_message?: string;
-  
+
   // Transcription
   stt_provider: 'whisper' | 'deepgram';
   stt_mode: 'fast' | 'accurate';
   denoising_mode: 'noise-cancellation' | 'noise-and-background-speech-cancellation';
-  
+
   // Security & Privacy
   pii_redaction_enabled: boolean;
   pii_redaction_list: string[];
   data_storage_policy: 'everything' | 'no-pii' | 'basic-attributes';
-  
+
   // Integration
   webhook_url?: string;
   webhook_timeout_ms: number;
   custom_headers: Record<string, string>;
-  
+
   // MCP Tools
   enabled_mcp_servers: string[];
-  
+
   // Knowledge Base
   knowledge_base_ids: string[];
-  
+
   // Status
   is_published: boolean;
   version: number;
-  
+
   // Full config backup
   config_json: AgentConfig;
-  
+
   // Metadata
   created_at: string;
   updated_at: string;
@@ -114,6 +114,52 @@ export interface AgentConfig {
   custom_headers: Record<string, string>;
   enabled_mcp_servers: string[];
   knowledge_base_ids: string[];
+
+  // SIP Configuration
+  sip?: {
+    enabled: boolean;
+    username: string;
+    password?: string;
+    domain: string;
+    port?: number;
+  };
+
+  // Theme Configuration
+  theme?: {
+    primaryColor: string;
+    chatWidgetColor?: string;
+    headerColor?: string;
+    headerHeight?: 'compact' | 'regular' | 'tall';
+    headerTitleSize?: 'sm' | 'md' | 'lg';
+    headerTitleWeight?: 'normal' | 'medium' | 'bold';
+    headerBackgroundStyle?: 'solid' | 'gradient' | 'pattern';
+    userBubbleColor?: string;
+    userBubbleRadius?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
+    botBubbleColor?: string;
+    botBubbleBorderColor?: string;
+    botBubbleRadius?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
+    bubbleShadow?: boolean;
+    sendButtonIcon?: 'send' | 'arrow' | 'plane' | 'sparkle';
+    sendButtonStyle?: 'solid' | 'outline' | 'ghost';
+    sendButtonColor?: string;
+    mode: 'light' | 'dark';
+    fontFamily: 'inter' | 'roboto' | 'mono';
+    fontStyle: 'thin' | 'regular' | 'medium';
+    fontWeight?: 'normal' | 'medium' | 'bold';
+    textSize?: 'sm' | 'md' | 'lg';
+    radius: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
+    avatarIcon: 'sparkles' | 'bot' | 'flower' | 'user' | 'help' | 'star';
+    launcherIcon?: string;
+    avatarImage?: string;
+    useLogoAsLauncher?: boolean;
+    customAvatar?: string;
+    headerIcon?: string;
+    chatWindowSize?: 'sm' | 'md' | 'lg' | 'custom';
+    launcherBubbleSize?: 'sm' | 'md' | 'lg';
+    scrollbarColor?: string;
+    showBranding: boolean;
+    customCss?: string;
+  };
 }
 
 export interface AgentCreateInput {
