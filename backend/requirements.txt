@@ -45,3 +45,7 @@ python-jose[cryptography]
 
 # HTTP
 httpx
+
+# LiveKit & Realtime
+livekit-api>=0.1.0
+livekit-server-sdk>=0.1.0

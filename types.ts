@@ -68,6 +68,7 @@ export enum AppView {
   INTEGRATION = 'integration',
   BILLING = 'billing',
   SETTINGS = 'settings',
+  PHONE_NUMBERS = 'phone_numbers',
 }
 
 export interface Message {

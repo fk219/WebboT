@@ -16,7 +16,8 @@ import {
   X,
   Edit2,
   Folder,
-  Sparkles
+  Sparkles,
+  Phone
 } from 'lucide-react';
 import { AppView } from '../../types';
 
@@ -64,6 +65,7 @@ const Sidebar = memo(({
     { icon: BarChart3, label: 'Analytics', view: AppView.ANALYTICS },
     { icon: History, label: 'History', view: AppView.HISTORY },
     { icon: Code, label: 'Integration', view: AppView.INTEGRATION },
+    { icon: Phone, label: 'Phone Numbers', view: AppView.PHONE_NUMBERS },
     { icon: Settings, label: 'Settings', view: AppView.SETTINGS },
     { icon: CreditCard, label: 'Billing', view: AppView.BILLING, badge: !isPro ? 'Upgrade' : undefined }
   ];
@@ -167,8 +169,8 @@ const Sidebar = memo(({
               key={item.view}
               onClick={() => setCurrentView(item.view)}
               className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-start'} gap-3 px-3 py-2.5 rounded-lg transition-all relative group ${isActive
-                  ? 'bg-emerald-500/10 text-emerald-400'
-                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                ? 'bg-emerald-500/10 text-emerald-400'
+                : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                 }`}
               title={isSidebarCollapsed ? item.label : undefined}
             >

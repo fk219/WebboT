@@ -2,8 +2,9 @@
  * Agent Preview Page - Test the LangGraph agent
  */
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { ArrowLeft, Send, Mic, MicOff, MessageSquare, Phone } from 'lucide-react';
+import { useLiveKitAudio } from '../hooks/useLiveKitAudio';
 
 interface AgentPreviewPageProps {
   agentId: string;
@@ -20,9 +21,11 @@ export default function AgentPreviewPage({ agentId, onNavigate }: AgentPreviewPa
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<'text' | 'voice'>('text');
+
+  // LiveKit State
+  const [token, setToken] = useState('');
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<string>('');
-  const voiceServiceRef = useRef<any>(null);
 
   const sessionId = useMemo(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, []);
 
@@ -50,7 +53,7 @@ export default function AgentPreviewPage({ agentId, onNavigate }: AgentPreviewPa
       }
 
       const data = await response.json();
-      
+
       const assistantMessage: Message = {
         role: 'assistant',
         content: data.response || 'No response received',
@@ -68,65 +71,53 @@ export default function AgentPreviewPage({ agentId, onNavigate }: AgentPreviewPa
     }
   };
 
+  const [token, setToken] = useState('');
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState<string>('');
+
+  // LiveKit Hook
+  const { room, isConnecting, isAgentSpeaking } = useLiveKitAudio({
+    token,
+    serverUrl: import.meta.env.VITE_LIVEKIT_URL || 'wss://your-project.livekit.cloud',
+    onConnected: () => setVoiceStatus('🎙️ Connected to LiveKit'),
+    onDisconnected: () => {
+      setVoiceStatus('🔌 Disconnected');
+      setIsVoiceActive(false);
+      setToken('');
+    },
+    onError: (err) => setVoiceStatus(`Error: ${err.message}`),
+  });
+
   const handleVoiceToggle = async () => {
     if (isVoiceActive) {
-      // Stop voice
-      if (voiceServiceRef.current) {
-        voiceServiceRef.current.stop();
-        voiceServiceRef.current = null;
-      }
+      // Stop voice: clear token to disconnect
+      setToken('');
       setIsVoiceActive(false);
       setVoiceStatus('');
     } else {
-      // Start voice
+      // Start voice: fetch token
       try {
-        const { VoiceOrchestrationService } = await import('../services/voiceOrchestrationService');
-        
-        // Get agent config (you'll need to fetch this)
-        const agentConfig = {
-          denoising_mode: 'noise-cancellation',
-          // Add other config as needed
-        };
-
-        const voiceService = new VoiceOrchestrationService(
-          agentId,
-          sessionId,
-          agentConfig as any,
-          {
-            onTranscript: (role, text) => {
-              const message: Message = {
-                role: role === 'user' ? 'user' : 'assistant',
-                content: text,
-              };
-              setMessages((prev) => [...prev, message]);
-            },
-            onError: (error) => {
-              setVoiceStatus(`Error: ${error}`);
-              setIsVoiceActive(false);
-            },
-            onDisconnect: () => {
-              setIsVoiceActive(false);
-              setVoiceStatus('');
-            },
-            onAudioStart: () => {
-              setVoiceStatus('🔊 Agent speaking...');
-            },
-            onAudioEnd: () => {
-              setVoiceStatus('🎙️ Listening...');
-            },
-          }
-        );
-
-        await voiceService.start();
-        voiceServiceRef.current = voiceService;
+        setVoiceStatus('🔄 Connecting...');
+        const { LiveKitService } = await import('../services/livekitService');
+        const newToken = await LiveKitService.getToken(`room-${agentId}-${sessionId}`, `user-${sessionId}`);
+        setToken(newToken);
         setIsVoiceActive(true);
-        setVoiceStatus('🎙️ Listening...');
       } catch (error) {
         console.error('Failed to start voice:', error);
-        alert('Failed to start voice mode. Please check microphone permissions.');
+        setVoiceStatus('❌ Failed to connect');
+        alert('Failed to connect to LiveKit. Check console for details.');
       }
     }
   };
+
+  // Update status based on agent speaking
+  useEffect(() => {
+    if (isAgentSpeaking) {
+      setVoiceStatus('🔊 Agent speaking...');
+    } else if (isVoiceActive && !isConnecting) {
+      setVoiceStatus('🎙️ Listening...');
+    }
+  }, [isAgentSpeaking, isVoiceActive, isConnecting]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -155,22 +146,20 @@ export default function AgentPreviewPage({ agentId, onNavigate }: AgentPreviewPa
             <div className="flex items-center space-x-2 bg-white/80 backdrop-blur-sm rounded-xl p-1 shadow-sm">
               <button
                 onClick={() => setMode('text')}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
-                  mode === 'text'
-                    ? 'bg-blue-100 text-blue-600'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${mode === 'text'
+                  ? 'bg-blue-100 text-blue-600'
+                  : 'text-gray-600 hover:bg-gray-100'
+                  }`}
               >
                 <MessageSquare className="h-4 w-4" />
                 <span className="text-sm font-medium">Text</span>
               </button>
               <button
                 onClick={() => setMode('voice')}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
-                  mode === 'voice'
-                    ? 'bg-purple-100 text-purple-600'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${mode === 'voice'
+                  ? 'bg-purple-100 text-purple-600'
+                  : 'text-gray-600 hover:bg-gray-100'
+                  }`}
               >
                 <Mic className="h-4 w-4" />
                 <span className="text-sm font-medium">Voice</span>
@@ -193,8 +182,8 @@ export default function AgentPreviewPage({ agentId, onNavigate }: AgentPreviewPa
                   )}
                 </div>
                 <p className="text-lg font-medium">
-                  {mode === 'text' 
-                    ? 'Start a conversation with your agent' 
+                  {mode === 'text'
+                    ? 'Start a conversation with your agent'
                     : 'Click the microphone to start talking'}
                 </p>
               </div>
@@ -202,16 +191,14 @@ export default function AgentPreviewPage({ agentId, onNavigate }: AgentPreviewPa
               messages.map((message, index) => (
                 <div
                   key={index}
-                  className={`flex ${
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  }`}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'
+                    }`}
                 >
                   <div
-                    className={`max-w-[70%] rounded-2xl px-4 py-3 shadow-sm ${
-                      message.role === 'user'
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
-                        : 'bg-white border border-gray-200 text-gray-900'
-                    }`}
+                    className={`max-w-[70%] rounded-2xl px-4 py-3 shadow-sm ${message.role === 'user'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                      : 'bg-white border border-gray-200 text-gray-900'
+                      }`}
                   >
                     {message.content}
                   </div>
@@ -262,11 +249,10 @@ export default function AgentPreviewPage({ agentId, onNavigate }: AgentPreviewPa
                 )}
                 <button
                   onClick={handleVoiceToggle}
-                  className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all transform hover:scale-105 ${
-                    isVoiceActive
-                      ? 'bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/50 animate-pulse'
-                      : 'bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg shadow-purple-500/50'
-                  }`}
+                  className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all transform hover:scale-105 ${isVoiceActive
+                    ? 'bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/50 animate-pulse'
+                    : 'bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg shadow-purple-500/50'
+                    }`}
                 >
                   {isVoiceActive ? (
                     <MicOff className="h-8 w-8 text-white" />

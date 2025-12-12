@@ -39,6 +39,7 @@ import DashboardPage from './src/pages/DashboardPage';
 import IntegrationPage from './src/pages/IntegrationPage';
 import ProjectsPage from './src/pages/ProjectsPage';
 import WidgetPage from './src/pages/WidgetPage';
+import PhoneNumbersPage from './src/pages/PhoneNumbersPage';
 import { RequireAuth } from './src/components/RequireAuth';
 import CreateProjectModal from './src/components/CreateProjectModal';
 import ConfirmModal from './src/components/ConfirmModal';
@@ -490,6 +491,7 @@ const AppLayout = () => {
               {currentView === AppView.INTEGRATION && <IntegrationPage />}
               {currentView === AppView.SETTINGS && <SettingsPage />}
               {currentView === AppView.BILLING && <BillingPage />}
+              {currentView === AppView.PHONE_NUMBERS && <PhoneNumbersPage />}
               {currentView === 'projects' && <ProjectsPage />}
             </>
           )}

@@ -37,11 +37,14 @@ app.include_router(agents.router, prefix="/api", tags=["agents"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
 
 # Include voice router if available
-if VOICE_AVAILABLE:
     app.include_router(voice.router, prefix="/api", tags=["voice"])
     print("✅ Voice features enabled")
 else:
     print("⚠️  Voice features disabled (missing API keys or dependencies)")
+
+# Include SIP router
+from .api import sip
+app.include_router(sip.router, prefix="/api", tags=["sip"])
 
 
 @app.get("/")
