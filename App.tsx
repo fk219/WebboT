@@ -40,6 +40,7 @@ import IntegrationPage from './src/pages/IntegrationPage';
 import ProjectsPage from './src/pages/ProjectsPage';
 import WidgetPage from './src/pages/WidgetPage';
 import PhoneNumbersPage from './src/pages/PhoneNumbersPage';
+import AgentEmbedPage from './src/pages/AgentEmbedPage';
 import { RequireAuth } from './src/components/RequireAuth';
 import CreateProjectModal from './src/components/CreateProjectModal';
 import ConfirmModal from './src/components/ConfirmModal';
@@ -539,6 +540,7 @@ export default function App() {
             <Routes>
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/widget/:projectId" element={<WidgetPage />} />
+              <Route path="/embed/:agentId" element={<AgentEmbedPage />} />
               <Route path="/dashboard/*" element={
                 <RequireAuth>
                   <AppLayout />

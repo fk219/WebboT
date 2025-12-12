@@ -31,7 +31,8 @@ pydub
 numpy
 
 # Vector DB (optional)
-# pinecone-client
+pinecone-client
+langchain-pinecone
 
 # Environment
 python-dotenv

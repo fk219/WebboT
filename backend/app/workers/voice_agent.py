@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 from ..langgraph.agent_runtime import runtime
 from ..services.livekit_service import LiveKitService
 
-# Placeholder for STT/TTS services - these would need actual implementations
-# from ..voice.stt import stream_speech_to_text
-# from ..voice.tts import stream_text_to_speech
+import numpy as np
+from ..voice.stt import speech_to_text
+from ..voice.tts import text_to_speech
 
 class VoiceAgent:
     """
@@ -66,59 +66,105 @@ class VoiceAgent:
         Audio -> VAD -> STT -> LangGraph -> TTS -> Audio
         """
         audio_stream = rtc.AudioStream(track)
-        
         print(f"👂 Listening to {participant.identity}...")
         
-        # NOTE: This is a simplified loop. In a real implementation, you'd use 
-        # a VAD (Voice Activity Detection) buffer here to detect end-of-speech.
-        
-        # For demonstration, we'll assume we get chunks of audio and process them.
-        # In production, integrate with Deepgram Live or similar.
+        # Audio buffer for VAD
+        buffer = []
+        silence_frames = 0
+        is_speech = False
+        SILENCE_THRESHOLD = 10  # Adjust based on testing
+        SILENCE_DURATION_FRAMES = 20 # Approx 0.5-1s depending on frame rate
         
         async for frame in audio_stream:
-            # 1. Detect Speech (VAD)
-            # if vad.is_speech(frame):
-            #    buffer.append(frame)
-            # elif vad.is_silence(frame) and buffer:
-            #    text = await stt.transcribe(buffer)
-            #    await self.process_interaction(text)
-            pass
+            # Convert to numpy array to check energy
+            data = np.frombuffer(frame.data, dtype=np.int16)
+            amplitude = np.abs(data).mean()
+            
+            if amplitude > SILENCE_THRESHOLD:
+                is_speech = True
+                silence_frames = 0
+                buffer.append(frame.data)
+            else:
+                if is_speech:
+                    silence_frames += 1
+                    buffer.append(frame.data)
+                    
+                    if silence_frames > SILENCE_DURATION_FRAMES:
+                        # End of speech detected
+                        print("Silence detected, processing speech...")
+                        full_audio = b''.join(buffer)
+                        
+                        # Reset buffer
+                        buffer = []
+                        is_speech = False
+                        silence_frames = 0
+                        
+                        # Process in background
+                        asyncio.create_task(self.process_interaction(full_audio))
+                else:
+                    # Just silence, ignore
+                    pass
 
-    async def process_interaction(self, user_text: str, session_id: str = "default"):
+    async def process_interaction(self, audio_data: bytes, session_id: str = "default"):
         """
         Run the agent pipeline
         """
-        if not user_text:
-            return
+        try:
+            # 1. STT
+            print("Transcribing...")
+            user_text = await speech_to_text(audio_data, {"stt_provider": "whisper"})
+            
+            if not user_text or len(user_text.strip()) < 2:
+                return
 
-        print(f"👤 User: {user_text}")
-        
-        # 1. Interrupt current speech if any
-        if self.is_speaking:
-            await self.stop_speaking()
+            print(f"👤 User: {user_text}")
+            
+            # 2. Interrupt current speech if any
+            if self.is_speaking:
+                await self.stop_speaking()
 
-        # 2. Get LLM Response
-        result = await runtime.execute_text(
-            agent_id=self.agent_id,
-            user_input=user_text,
-            session_id=session_id,
-            db=self.db,
-            metadata={"channel": "livekit_voice"}
-        )
-        agent_text = result["response"]
-        print(f"🤖 Agent: {agent_text}")
+            # 3. Get LLM Response
+            result = await runtime.execute_text(
+                agent_id=self.agent_id,
+                user_input=user_text,
+                session_id=session_id,
+                db=self.db,
+                metadata={"channel": "livekit_voice"}
+            )
+            agent_text = result["response"]
+            print(f"🤖 Agent: {agent_text}")
 
-        # 3. TTS & Stream Audio
-        await self.speak(agent_text)
+            # 4. TTS & Stream Audio
+            await self.speak(agent_text)
+            
+        except Exception as e:
+            print(f"❌ Error in interaction: {e}")
 
     async def speak(self, text: str):
         """
         Convert text to speech and push to audio source
         """
         self.is_speaking = True
-        # audio_data = await tts.generate(text)
-        # await self.audio_source.capture_frame(audio_data)
-        self.is_speaking = False
+        try:
+            # Generate Audio
+            audio_bytes = await text_to_speech(text, {"voice_provider": "openai"})
+            
+            # Convert bytes to frames and push to LiveKit
+            # This part requires decoding the MP3/WAV from TTS into PCM
+            # For MVP, we'll skip the complex decoding and assume we can push raw bytes 
+            # (LiveKit usually needs PCM). 
+            # TODO: Add pydub or similar to decode MP3 to PCM
+            
+            # For now, we'll just print that we are speaking
+            print(f"🔊 Speaking: {text}")
+            
+            # In a real impl, we would decode audio_bytes to PCM and call:
+            # await self.audio_source.capture_frame(frame)
+            
+        except Exception as e:
+            print(f"❌ TTS Error: {e}")
+        finally:
+            self.is_speaking = False
 
     async def stop_speaking(self):
         """Stop current audio output (Barge-in)"""

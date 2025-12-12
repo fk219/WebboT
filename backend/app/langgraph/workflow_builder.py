@@ -10,6 +10,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from typing import Dict, Any
 from .state import AgentState
+from .knowledge import kb_service
 
 
 class WorkflowBuilder:
@@ -56,9 +57,17 @@ class WorkflowBuilder:
     
     def retrieve_knowledge(self, state: AgentState) -> AgentState:
         """Retrieve relevant knowledge from KBs"""
-        # TODO: Implement actual knowledge retrieval
-        # For now, just pass through
-        state["context"]["knowledge"] = []
+        user_input = state["messages"][-1].content
+        kb_ids = self.config.get("knowledge_base_ids", [])
+        
+        if kb_ids:
+            print(f"🔍 Searching Knowledge Base for: {user_input}")
+            chunks = kb_service.search(user_input, kb_ids)
+            state["context"]["knowledge"] = chunks
+            print(f"📚 Found {len(chunks)} relevant chunks")
+        else:
+            state["context"]["knowledge"] = []
+            
         return state
     
     def llm_reasoning(self, state: AgentState) -> AgentState:
