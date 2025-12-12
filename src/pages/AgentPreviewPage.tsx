@@ -71,9 +71,7 @@ export default function AgentPreviewPage({ agentId, onNavigate }: AgentPreviewPa
     }
   };
 
-  const [token, setToken] = useState('');
-  const [isVoiceActive, setIsVoiceActive] = useState(false);
-  const [voiceStatus, setVoiceStatus] = useState<string>('');
+
 
   // LiveKit Hook
   const { room, isConnecting, isAgentSpeaking } = useLiveKitAudio({
